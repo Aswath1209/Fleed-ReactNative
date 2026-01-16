@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Alert, StyleSheet, Text, TouchableOpacity, View, Share, Platform } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { theme } from '../constants/theme'
 import { hp, stripHtmlTags, wp } from '../helpers/common'
@@ -10,7 +10,7 @@ import { Image } from 'expo-image'
 import { downloadFile, getSupabaseFileUrl } from '../services/ImageService'
 import { Video } from 'expo-av'
 import { createPostLike, removePostLike } from '../services/postService'
-import { Share } from 'react-native'
+import * as Sharing from 'expo-sharing'
 import Loading from './Loading'
 
 const PostCard = ({
@@ -69,7 +69,7 @@ const PostCard = ({
     }
 
     const handlePostDelete = () => {
-        Alert.alert("Confirm", "Are you sure you want to Delete?"[
+        Alert.alert("Confirm", "Are you sure you want to Delete?", [
             {
                 text: 'Cancel',
                 onPress: () => console.log("Delete Post Cancelled"),
@@ -117,14 +117,28 @@ const PostCard = ({
     const onShare = async () => {
         let content = { message: stripHtmlTags(item?.body) };
         setLoading(true)
-        if (item?.file) {
-            let url = await downloadFile(getSupabaseFileUrl(item?.file).uri);
-            setLoading(false)
-            content.url = url;
+        try {
+            if (item?.file) {
+                let url = await downloadFile(getSupabaseFileUrl(item?.file).uri);
+                setLoading(false)
+                if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(url);
+                } else {
+                    content.url = url;
+                    Share.share(content);
+                }
+            } else {
+                setLoading(false)
+                Share.share(content)
+            }
+        } catch (error) {
+            setLoading(false);
+            console.log("Share Error: ", error);
         }
-        Share.share(content)
-
     }
+
+    const fileSource = React.useMemo(() => getSupabaseFileUrl(item?.file), [item?.file]);
+
     return (
         <View style={[styles.container, hasShadow && shadowStyle]}>
             <View style={styles.header}>
@@ -171,7 +185,7 @@ const PostCard = ({
                 </View>
                 {
                     item?.file && item?.file?.includes('postImages') && (
-                        <Image source={getSupabaseFileUrl(item?.file)}
+                        <Image source={fileSource}
                             transition={100}
                             style={styles.postMedia}
                             contentFit='cover'
@@ -182,10 +196,12 @@ const PostCard = ({
                     item?.file && item?.file?.includes('postVideos') && (
                         <Video
                             style={[styles.postMedia, { height: hp(30) }]}
-                            source={getSupabaseFileUrl(item?.file)}
+                            source={fileSource}
                             useNativeControls
-                            resizeMode='cover'
-                            isLooping
+                            resizeMode='contain'
+                            isLooping={false}
+                            shouldPlay={false}
+                            isMuted={false}
                         />
                     )
                 }

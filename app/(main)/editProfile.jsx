@@ -41,6 +41,12 @@ const EditProfile = () => {
 
     const onPickImage = async () => {
 
+        let permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (permissionResult.granted === false) {
+            Alert.alert("Permission Required", "You need to allow access to your photos to upload an image.");
+            return;
+        }
+
         let Result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,

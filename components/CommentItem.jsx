@@ -8,29 +8,29 @@ import Icon from '../assets/icons'
 
 const CommentItem = ({
     item,
-    canDelete=false,
-    onDelete=()=>{},
-    highlight=false
+    canDelete = false,
+    onDelete = () => { },
+    highlight = false
 }) => {
 
     const createdAt = moment(item?.created_at).format('MMM D');
-     const handleDelete=async()=>{
-            Alert.alert("Confirm","Are you sure,you want to delete?"[
-                {
-                text:'Cancel',
-                onPress:()=>console.log("delete Cancelled"),
-                style:'cancel'
-                },{
-                    text:"Delete",
-                    onPress:()=>onDelete(item),
-                    style:'destructive'
-                }
-    
-            ])
-    
-        }
+    const handleDelete = async () => {
+        Alert.alert("Confirm", "Are you sure,you want to delete?", [
+            {
+                text: 'Cancel',
+                onPress: () => console.log("delete Cancelled"),
+                style: 'cancel'
+            }, {
+                text: "Delete",
+                onPress: () => onDelete(item),
+                style: 'destructive'
+            }
+
+        ])
+
+    }
     return (
-        <View style={[styles.container,highlight&&styles.highlight]}>
+        <View style={[styles.container, highlight && styles.highlight]}>
             <Avatar
                 uri={item?.user?.image}
 
@@ -59,7 +59,7 @@ const CommentItem = ({
                     )}
                 </View>
 
-                <Text style={[styles.text,{fontWeight:'normal'}]}>
+                <Text style={[styles.text, { fontWeight: 'normal' }]}>
                     {item?.text}
                 </Text>
             </View>
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
         elevation: 5
     },
     content: {
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: 'rgba(0,0,0,0.06)',
         flex: 1,
         gap: 5,
         paddingVertical: 10,

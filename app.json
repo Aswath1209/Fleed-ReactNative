@@ -31,13 +31,19 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/fleed_splash_screen.png",
+          "image": "./assets/images/fleed_logo.png",
           "imageWidth": 200,
-          "resizeMode": "cover",
+          "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
       ]
     ],

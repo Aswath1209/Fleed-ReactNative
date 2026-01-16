@@ -47,6 +47,14 @@ const NewPost = () => {
         allowsEditing: true
       }
     }
+
+    // Explicitly check permissions
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission Required", "You need to allow access to your photos to upload media.");
+      return;
+    }
+
     let Result = await ImagePicker.launchImageLibraryAsync(mediaConfig);
 
     if (!Result.canceled) {
@@ -116,7 +124,7 @@ const NewPost = () => {
   return (
     <ScreenWrapper bg="white">
       <View style={styles.container}>
-        <Header title={post && post.id ? "Update Post" : "Create Post"} />
+        <Header title={post && post.id ? "Update Post" : "Create Post"} router={router} />
         <ScrollView contentContainerStyle={{ gap: 20 }}>
           <View style={styles.header}>
             <Avatar uri={user?.image} size={hp(6.5)} rounded={theme.radius.xl} />
@@ -148,7 +156,7 @@ const NewPost = () => {
                       uri: getFileUri(file)
                     }}
                     useNativeControls
-                    resizeMode='cover'
+                    resizeMode='contain'
                     isLooping
                   />
                 ) : (

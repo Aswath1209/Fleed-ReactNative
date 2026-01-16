@@ -84,7 +84,7 @@ export const getLocalFilePath = Fileurl => {
 }
 
 export const getFilePath = (folderName, isImage) => {
-    return `${folderName}/${(new Date()).getTime()}${isImage ? '.png' : 'mp4'}`;
+    return `${folderName}/${(new Date()).getTime()}${isImage ? '.png' : '.mp4'}`;
 
 }
 

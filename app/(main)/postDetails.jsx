@@ -13,6 +13,7 @@ import CommentItem from '../../components/CommentItem'
 import { supabase } from '../../lib/supabase'
 import { getUserData } from '../../services/userService'
 import { createNotifications } from '../../services/notificationService'
+import Header from '../../components/Header'
 
 const PostDetails = () => {
     const { postId, commentId } = useLocalSearchParams();
@@ -162,6 +163,7 @@ const PostDetails = () => {
     }
     return (
         <View style={styles.container}>
+            <Header title="Post Details" router={router} mb={10} />
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
                 <PostCard
                     item={{ ...post, comments: [{ count: post?.comments?.length }] }}

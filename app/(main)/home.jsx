@@ -84,21 +84,26 @@ const Home = () => {
 
 
 
+    const [isFetching, setIsFetching] = useState(false);
+
     const getPosts = async () => {
-        if (!hasMore) return null;
-        limit = limit + 10;
-        let res = await fetchPost(limit);
-        if (res.success) {
-            if (post.length == res.data.length) {
-                setHasMore(false)
+        if (!hasMore || isFetching) return null;
+        setIsFetching(true);
+        try {
+            limit = limit + 10;
+            let res = await fetchPost(limit);
+            if (res.success) {
+                if (post.length == res.data.length) {
+                    setHasMore(false)
+                }
+                setPost(res.data)
             }
-            setPost(res.data)
+        } finally {
+            setIsFetching(false);
         }
-
-
     }
 
-    console.log("Got Posts",post)
+    console.log("Got Posts", post)
 
     return (
         <ScreenWrapper bg="white">

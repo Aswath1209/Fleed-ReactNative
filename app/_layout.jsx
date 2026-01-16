@@ -72,7 +72,9 @@ const MainLayout = () => {
         <Stack.Screen
           name='(main)/postDetails'
           options={{
-            presentation: 'modal'
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            gestureEnabled: true
           }}
         />
       </Stack>

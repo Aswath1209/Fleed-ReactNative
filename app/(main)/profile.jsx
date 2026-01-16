@@ -37,21 +37,26 @@ const Profile = () => {
         }
 
     }
+    const [isFetching, setIsFetching] = useState(false);
+
     const getPosts = async () => {
-        if (!hasMore) return null;
-        limit = limit + 10;
-        let res = await fetchPost(limit, user.id);
-        if (res.success) {
-            if (posts.length == res.data.length) {
-                setHasMore(false)
+        if (!hasMore || isFetching) return null;
+        setIsFetching(true);
+        try {
+            limit = limit + 10;
+            let res = await fetchPost(limit, user.id);
+            if (res.success) {
+                if (posts.length == res.data.length) {
+                    setHasMore(false)
+                }
+                setPosts(res.data)
             }
-            setPosts(res.data)
+        } finally {
+            setIsFetching(false);
         }
-
-
     }
     const handleLogout = async () => {
-        Alert.alert("Confirm", "Are you sure you want to logout?"[
+        Alert.alert("Confirm", "Are you sure you want to logout?", [
             {
                 text: 'Cancel',
                 onPress: () => console.log("log Out Cancelled"),
@@ -125,13 +130,13 @@ const UserHeader = ({ user, router, handleLogout }) => {
                         <Text style={styles.infoText}>{user && user.address}</Text>
 
                     </View>
-                    <View style={{ gap: 10 }}>
+                    <View style={styles.info}>
                         <Icon name="mail" size={20} color={theme.colors.textLight} />
                         <Text style={styles.infoText}>{user && user.email}</Text>
 
                     </View>
                     {user && user.phoneNumber && (
-                        <View style={{ gap: 10 }}>
+                        <View style={styles.info}>
                             <Icon name="call" size={20} color={theme.colors.textLight} />
                             <Text style={styles.infoText}>{user && user.phoneNumber}</Text>
 
@@ -182,7 +187,7 @@ const styles = StyleSheet.create({
     editIcon: {
         position: 'absolute',
         bottom: 4,
-        right: -12,
+        right: -6,
         padding: 7,
         borderRadius: 50,
         backgroundColor: 'white',
