@@ -142,7 +142,7 @@ const PostCard = ({
     return (
         <View style={[styles.container, hasShadow && shadowStyle]}>
             <View style={styles.header}>
-                <View style={styles.userInfo}>
+                <TouchableOpacity onPress={()=>router.push({ pathname: 'profile', params: { userId: item?.user?.id } })}style={styles.userInfo}>
                     <Avatar
                         size={hp(4.5)}
                         uri={item?.user?.image}
@@ -153,8 +153,7 @@ const PostCard = ({
                         <Text style={styles.postItem}>{createdAt}</Text>
 
                     </View>
-
-                </View>
+                </TouchableOpacity>
                 {showMoreIcon && (
                     <TouchableOpacity onPress={openPostDetails}>
                         <Icon name="threeDotsHorizontal" size={hp(3.4)} strokeWidth={3} color={theme.colors.text} />

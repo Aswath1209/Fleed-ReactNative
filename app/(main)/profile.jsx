@@ -3,7 +3,7 @@ import React from 'react'
 import { useEffect, useState } from 'react'
 import ScreenWrapper from '../../components/ScreenWrapper'
 import { useAuth } from '../../context/AuthContext'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import Header from '../../components/Header'
 import { hp, wp } from '../../helpers/common'
 import Icon from '../../assets/icons'
@@ -13,22 +13,61 @@ import Avatar from '../../components/Avatar'
 import { fetchPost } from '../../services/postService'
 import PostCard from '../../components/PostCard'
 import Loading from '../../components/Loading'
+import { getUserData } from '../../services/userService'
+import { fetchFollowStatus, followUser, unfollowUser } from '../../services/followService'
+import Button from '../../components/Button'
+import { fixCurrentParams } from 'expo-router/build/fork/getPathFromState-forks'
 
 var limit = 0;
 const Profile = () => {
-    const { user, setAuth } = useAuth();
+    const { user: currentUser, setAuth } = useAuth();
+    const { userId } = useLocalSearchParams();
     const router = useRouter();
+    const targetUserId = userId || currentUser.id;
 
     const [posts, setPosts] = useState([]);
     const [hasMore, setHasMore] = useState(true);
+    const [profileUser, setProfileUser] = useState(null);
+    const [isFollowing, setIsFollowing] = useState(false)
+    const[loading,setLoading]=useState(false)
 
     useEffect(() => {
         console.log('Profile: mounting');
-        if (user) {
+        if (currentUser) {
             limit = 0;
             getPosts();
         }
-    }, [user]);
+    }, [currentUser]);
+
+    const checkFollowData = async (targetId) => {
+        if (targetId && targetId !== currentUser.id) {
+            let res = await fetchFollowStatus(currentUser.id, targetId)
+            if (res.success && res.data) {
+                setIsFollowing(true)
+            } else {
+                setIsFollowing(false)
+            }
+        }
+    }
+
+    useEffect(() => {
+        fetchProfileData();
+    }, [userId])
+
+    const fetchProfileData = async () => {
+        if (userId && userId !== currentUser.id) {
+            const res = await getUserData(userId);
+            if (res.success) {
+                setProfileUser(res.data);
+                checkFollowData(res.data.id);
+            }
+            else {
+                setProfileUser(currentUser)
+            }
+        } else {
+            setProfileUser(currentUser);
+        }
+    }
 
     const onLogout = async () => {
         const { error } = await supabase.auth.signOut();
@@ -44,7 +83,7 @@ const Profile = () => {
         setIsFetching(true);
         try {
             limit = limit + 10;
-            let res = await fetchPost(limit, user.id);
+            let res = await fetchPost(limit, targetUserId);
             if (res.success) {
                 if (posts.length == res.data.length) {
                     setHasMore(false)
@@ -70,18 +109,42 @@ const Profile = () => {
         ])
 
     }
+
+    const follow = async () => {
+        console.log("Pressed")
+        setLoading(true);
+        const res = await followUser({ follower_id: currentUser.id, following_id: profileUser.id });
+        setLoading(false);
+        if (res.success) {
+            setIsFollowing(true);
+        } else {
+            Alert.alert("Error", res.msg);
+        }
+    }
+    const Unfollow = async () => {
+        let followeeId = profileUser?.id;
+        if(!followeeId) return;
+        setLoading(true);
+        const res = await unfollowUser(currentUser.id, followeeId)
+        setLoading(false);
+        if (res.success) {
+            setIsFollowing(false);
+        }else{
+            Alert.alert("Error",res.msg);
+        }
+    }
     return (
         <ScreenWrapper bg="white">
             <FlatList
                 data={posts}
-                ListHeaderComponent={<UserHeader user={user} router={router} handleLogout={handleLogout} />}
+                ListHeaderComponent={<UserHeader user={profileUser} loading={loading} router={router} handleLogout={handleLogout} isOwnProfile={targetUserId === currentUser.id} onFollow={follow} isFollowing={isFollowing} onUnfollow={Unfollow} />}
                 ListHeaderComponentStyle={{ marginBottom: 30 }}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.listStyle}
                 keyExtractor={item => item.id.toString()}
                 renderItem={({ item }) => <PostCard
                     item={item}
-                    currentUser={user}
+                    currentUser={currentUser}
                     router={router}
 
                 />}
@@ -94,7 +157,7 @@ const Profile = () => {
                         <Loading />
                     </View>) : (
                     <View style={{ marginVertical: 30 }}>
-                        <Text style={styles.noPosts}>No More Posts Available:(</Text>
+                        <Text style={styles.noPosts}>No More Posts Available</Text>
                     </View>
 
                 )}
@@ -103,14 +166,17 @@ const Profile = () => {
     )
 }
 
-const UserHeader = ({ user, router, handleLogout }) => {
+const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFollowing, onUnfollow,loading }) => {
     return (
         <View style={{ flex: 1, backgroundColor: "white", paddingHorizontal: wp(4) }}>
             <View>
                 <Header title="Profile" mb={30} router={router} />
-                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                    <Icon name="logout" color={theme.colors.rose} />
-                </TouchableOpacity>
+                {isOwnProfile && (
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                        <Icon name="logout" color={theme.colors.rose} />
+                    </TouchableOpacity>
+                )}
+
             </View>
             <View style={styles.container}>
                 <View style={{ gap: 15 }}>
@@ -121,21 +187,24 @@ const UserHeader = ({ user, router, handleLogout }) => {
                             rounded={theme.radius.xxl * 1.4}
                         />
 
-                        <Pressable style={styles.editIcon} onPress={() => router.push('editProfile')}>
-                            <Icon name="edit" strokeWidth={2.5} />
-                        </Pressable>
+                        {isOwnProfile && (
+                            <Pressable style={styles.editIcon} onPress={() => router.push('editProfile')}>
+                                <Icon name="edit" strokeWidth={2.5} />
+                            </Pressable>
+                        )}
                     </View>
                     <View style={{ alignItems: 'center', gap: 4 }}>
                         <Text style={styles.userName}>{user && user.name}</Text>
                         <Text style={styles.infoText}>{user && user.address}</Text>
 
                     </View>
-                    <View style={styles.info}>
-                        <Icon name="mail" size={20} color={theme.colors.textLight} />
-                        <Text style={styles.infoText}>{user && user.email}</Text>
+                    {isOwnProfile && (
+                        <View style={styles.info}>
+                            <Icon name="mail" size={20} color={theme.colors.textLight} />
+                            <Text style={styles.infoText}>{user && user.email}</Text>
 
-                    </View>
-                    {user && user.phoneNumber && (
+                        </View>)}
+                    {user && user.phoneNumber && isOwnProfile && (
                         <View style={styles.info}>
                             <Icon name="call" size={20} color={theme.colors.textLight} />
                             <Text style={styles.infoText}>{user && user.phoneNumber}</Text>
@@ -148,7 +217,13 @@ const UserHeader = ({ user, router, handleLogout }) => {
                     )}
 
 
+
                 </View>
+                {!isOwnProfile && (
+                    <View>
+                        <Button loading={loading} title={isFollowing ? "Unfollow" : "Follow"} onPress={isFollowing ? onUnfollow : onFollow} buttonStyle={{ backgroundColor: isFollowing ? theme.colors.rose : theme.colors.primary}} />
+                    </View>
+                )}
             </View>
 
         </View>

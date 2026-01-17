@@ -5,7 +5,7 @@ import { theme } from '../constants/theme'
 import Avatar from './Avatar'
 import moment from 'moment'
 import Icon from '../assets/icons'
-
+import { useRouter } from 'expo-router'
 const CommentItem = ({
     item,
     canDelete = false,
@@ -13,6 +13,7 @@ const CommentItem = ({
     highlight = false
 }) => {
 
+    const router=useRouter();
     const createdAt = moment(item?.created_at).format('MMM D');
     const handleDelete = async () => {
         Alert.alert("Confirm", "Are you sure,you want to delete?", [
@@ -37,7 +38,7 @@ const CommentItem = ({
             />
             <View style={styles.content}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View style={styles.nameContainer}>
+                    <TouchableOpacity style={styles.nameContainer} onPress={() => router.push({pathname:'profile',params:{userId:item?.user?.id}})}>
                         <Text style={styles.text}>
                             {
                                 item?.user.name
@@ -49,7 +50,7 @@ const CommentItem = ({
                                 createdAt
                             }
                         </Text>
-                    </View>
+                    </TouchableOpacity>
                     {canDelete && (
                         <TouchableOpacity onPress={handleDelete}>
                             <Icon

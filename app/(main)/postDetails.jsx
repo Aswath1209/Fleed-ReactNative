@@ -14,6 +14,8 @@ import { supabase } from '../../lib/supabase'
 import { getUserData } from '../../services/userService'
 import { createNotifications } from '../../services/notificationService'
 import Header from '../../components/Header'
+import ScreenWrapper from '../../components/ScreenWrapper'
+
 
 const PostDetails = () => {
     const { postId, commentId } = useLocalSearchParams();
@@ -162,6 +164,7 @@ const PostDetails = () => {
         )
     }
     return (
+        <ScreenWrapper>
         <View style={styles.container}>
             <Header title="Post Details" router={router} mb={10} />
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
@@ -220,6 +223,7 @@ const PostDetails = () => {
                 </View>
             </ScrollView>
         </View>
+        </ScreenWrapper>
     )
 }
 

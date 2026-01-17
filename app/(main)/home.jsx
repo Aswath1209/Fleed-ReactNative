@@ -1,4 +1,4 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { FlatList, RefreshControl,Pressable, StyleSheet, Text, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import ScreenWrapper from '../../components/ScreenWrapper'
 import { hp, wp } from '../../helpers/common'
@@ -20,6 +20,7 @@ const Home = () => {
     const router = useRouter();
     const [post, setPost] = useState([])
     const [hasMore, setHasMore] = useState(true)
+    const [refreshing, setRefreshing] = useState(false);
     const [notificationCount, setNotificationCount] = useState(0)
 
     const handlePostEvent = async (payload) => {
@@ -81,7 +82,13 @@ const Home = () => {
     }, [user])
 
 
-
+const onRefresh = async() => {
+    setRefreshing(true);
+    limit=0;
+    setHasMore(true);
+    await getPosts();
+    setRefreshing(false);
+}
 
 
     const [isFetching, setIsFetching] = useState(false);
@@ -139,6 +146,7 @@ const Home = () => {
                 </View>
                 <FlatList
                     data={post}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.listStyle}
                     keyExtractor={item => item.id.toString()}

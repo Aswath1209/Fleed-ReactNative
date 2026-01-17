@@ -28,19 +28,10 @@ export const uploadFile = async (folderName, fileUri, isImage = true) => {
             const response = await fetch(fileUri);
             file = await response.blob();
         } else {
-            file = await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.onload = function () {
-                    resolve(xhr.response);
-                };
-                xhr.onerror = function (e) {
-                    console.log(e);
-                    reject(new TypeError("Network request failed"));
-                };
-                xhr.responseType = "blob";
-                xhr.open("GET", fileUri, true);
-                xhr.send(null);
+            const fileBase64 = await FileSystem.readAsStringAsync(fileUri, {
+                encoding: FileSystem.EncodingType.Base64,
             });
+            file = decode(fileBase64);
         }
 
         const { data, error } = await supabase
@@ -49,7 +40,7 @@ export const uploadFile = async (folderName, fileUri, isImage = true) => {
             .upload(fileName, file, {
                 cacheControl: '3600',
                 upsert: false,
-                contentType: isImage ? 'image/*' : 'video/*'
+                contentType: isImage ? 'image/png' : 'video/mp4'
             });
 
         if (error) {
@@ -79,8 +70,24 @@ export const downloadFile = async (url) => {
 
 export const getLocalFilePath = Fileurl => {
     let fileName = Fileurl.split('/').pop();
-    return `${FileSystem.documentDirectory}${fileName}`
+    // Force extension if missing or malformed to ensure sharing works
+    if (!fileName.includes('.')) {
+        if (Fileurl.includes('postImages') || Fileurl.includes('profiles')) {
+            fileName += '.png';
+        } else if (Fileurl.includes('postVideos')) {
+            fileName += '.mp4';
+        }
+    } else {
+        // Fix the specific "mp4" without dot case if legacy data exists
+        if (fileName.endsWith('mp4') && !fileName.endsWith('.mp4')) {
+            fileName = fileName.replace('mp4', '.mp4');
+        }
+        if (fileName.endsWith('png') && !fileName.endsWith('.png')) {
+            fileName = fileName.replace('png', '.png');
+        }
+    }
 
+    return `${FileSystem.documentDirectory}${fileName}`
 }
 
 export const getFilePath = (folderName, isImage) => {

@@ -44,7 +44,8 @@ const NewPost = () => {
     if (!isImage) {
       mediaConfig = {
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsEditing: true
+        allowsEditing: true,
+        videoMaxDuration: 60
       }
     }
 
@@ -54,6 +55,7 @@ const NewPost = () => {
       Alert.alert("Permission Required", "You need to allow access to your photos to upload media.");
       return;
     }
+    // Alert.alert("Debug", "Permissions Granted"); // Uncomment if needed for extreme debugging
 
     let Result = await ImagePicker.launchImageLibraryAsync(mediaConfig);
 
@@ -187,6 +189,7 @@ const NewPost = () => {
           title={post && post.id ? "Update" : "Post"}
           hasShadow={false}
           onPress={onSubmit}
+          loading={loading}
         />
 
       </View>

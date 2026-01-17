@@ -46,6 +46,7 @@ const EditProfile = () => {
             Alert.alert("Permission Required", "You need to allow access to your photos to upload an image.");
             return;
         }
+        // Alert.alert("Debug", "Permissions Granted"); // Uncomment if needed for extreme debugging
 
         let Result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
