@@ -23,6 +23,10 @@ import Logout from './logout';
 import Image from './Image';
 import Video from './Video';
 
+import Play from './Play';
+import Mute from './Mute';
+import Volume from './Volume';
+
 const icons = {
   home: Home,
   mail: Mail,
@@ -45,6 +49,9 @@ const icons = {
   logout: Logout,
   image: Image,
   video: Video,
+  play: Play,
+  mute: Mute,
+  volume: Volume,
 }
 
 const Icon = ({ name, ...props }) => {

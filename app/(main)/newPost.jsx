@@ -132,8 +132,7 @@ const NewPost = () => {
             <Avatar uri={user?.image} size={hp(6.5)} rounded={theme.radius.xl} />
             <View style={{ gap: 2 }}>
               <Text style={styles.userName}>
-                {user && user.userName}
-
+                {user && user.name}
               </Text>
               <Text style={styles.publicText}>
                 Public</Text>

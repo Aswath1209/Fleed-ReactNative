@@ -29,15 +29,17 @@ const Profile = () => {
     const [hasMore, setHasMore] = useState(true);
     const [profileUser, setProfileUser] = useState(null);
     const [isFollowing, setIsFollowing] = useState(false)
-    const[loading,setLoading]=useState(false)
+    const [loading, setLoading] = useState(false)
 
     useEffect(() => {
         console.log('Profile: mounting');
         if (currentUser) {
+            setPosts([]);
+            setHasMore(true);
             limit = 0;
             getPosts();
         }
-    }, [currentUser]);
+    }, [targetUserId,currentUser,userId]);
 
     const checkFollowData = async (targetId) => {
         if (targetId && targetId !== currentUser.id) {
@@ -123,14 +125,14 @@ const Profile = () => {
     }
     const Unfollow = async () => {
         let followeeId = profileUser?.id;
-        if(!followeeId) return;
+        if (!followeeId) return;
         setLoading(true);
         const res = await unfollowUser(currentUser.id, followeeId)
         setLoading(false);
         if (res.success) {
             setIsFollowing(false);
-        }else{
-            Alert.alert("Error",res.msg);
+        } else {
+            Alert.alert("Error", res.msg);
         }
     }
     return (
@@ -166,11 +168,11 @@ const Profile = () => {
     )
 }
 
-const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFollowing, onUnfollow,loading }) => {
+const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFollowing, onUnfollow, loading }) => {
     return (
         <View style={{ flex: 1, backgroundColor: "white", paddingHorizontal: wp(4) }}>
             <View>
-                <Header title="Profile" mb={30} router={router} />
+                <Header title="Profile" mb={30} router={router} showBackButton={false} />
                 {isOwnProfile && (
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                         <Icon name="logout" color={theme.colors.rose} />
@@ -221,7 +223,7 @@ const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFoll
                 </View>
                 {!isOwnProfile && (
                     <View>
-                        <Button loading={loading} title={isFollowing ? "Unfollow" : "Follow"} onPress={isFollowing ? onUnfollow : onFollow} buttonStyle={{ backgroundColor: isFollowing ? theme.colors.rose : theme.colors.primary}} />
+                        <Button loading={loading} title={isFollowing ? "Unfollow" : "Follow"} onPress={isFollowing ? onUnfollow : onFollow} buttonStyle={{ backgroundColor: isFollowing ? theme.colors.rose : theme.colors.primary }} />
                     </View>
                 )}
             </View>

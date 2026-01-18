@@ -20,7 +20,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.aswath1209.fleed"
+      "package": "com.aswath1209.fleed",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -54,7 +57,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "9d5ef074-fdbd-4f05-9019-2f83ffba3504"
+        "projectId": "45009c32-c0a5-4dea-a8c0-7a9bbb3a2e8a"
       }
     }
   }

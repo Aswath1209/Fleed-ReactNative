@@ -70,7 +70,15 @@ const MainLayout = () => {
         }}
       >
         <Stack.Screen
-          name='(main)/postDetails'
+          name='postDetails'
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            gestureEnabled: true
+          }}
+        />
+        <Stack.Screen
+          name='feedComment'
           options={{
             presentation: 'modal',
             animation: 'slide_from_bottom',

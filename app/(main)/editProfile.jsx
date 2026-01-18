@@ -101,7 +101,7 @@ const EditProfile = () => {
         <ScreenWrapper bg="white">
             <View style={styles.container}>
                 <ScrollView style={{ flex: 1 }}>
-                    <Header title="Edit Profile" />
+                    <Header title="Edit Profile" router={router}/>
 
                     <View style={styles.form}>
                         <View style={styles.avatarContainer}>
