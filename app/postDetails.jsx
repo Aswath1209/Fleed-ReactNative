@@ -15,10 +15,12 @@ import { getUserData } from '../services/userService'
 import { createNotifications } from '../services/notificationService'
 import Header from '../components/Header'
 import ScreenWrapper from '../components/ScreenWrapper'
+import { useAlert } from '../context/AlertContext';
 
 
 const PostDetails = () => {
     const { postId, commentId } = useLocalSearchParams();
+    const { showAlert } = useAlert();
     const { user } = useAuth();
     const router = useRouter();
     const [post, setPost] = useState(null);
@@ -63,16 +65,19 @@ const PostDetails = () => {
 
     const getPostDetails = async () => {
         console.log('getPostDetails: fetching id:', postId);
-        let res = await fetchPostDetails(postId)
-        console.log('getPostDetails: result:', res);
-        if (res.success) {
-            res.data.comments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            setPost(res.data)
-        }
-        setStartLoading(false)
+        if (postId) {
+            let res = await fetchPostDetails(postId)
 
-        if (!res.success) {
-            Alert.alert('Post', res.msg)
+            console.log('getPostDetails: result:', res);
+            if (res.success) {
+                res.data.comments.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                setPost(res.data)
+            }
+            setStartLoading(false)
+
+            if (!res.success) {
+                showAlert('Post', res.msg)
+            }
         }
     }
 
@@ -113,7 +118,7 @@ const PostDetails = () => {
             commentRef.current = "";
         }
         else {
-            Alert.alert("Comment", res.msg)
+            showAlert("Comment", res.msg)
         }
 
     }
@@ -128,7 +133,7 @@ const PostDetails = () => {
             }
             )
         } else {
-            Alert.alert('Comment', res.msg)
+            showAlert('Comment', res.msg)
         }
     }
 
@@ -137,7 +142,7 @@ const PostDetails = () => {
         if (res.success) {
             router.back();
         } else {
-            Alert.alert('Post', res.msg)
+            showAlert('Post', res.msg)
         }
 
     }

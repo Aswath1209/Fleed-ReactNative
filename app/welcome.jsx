@@ -22,7 +22,7 @@ const Welcome = () => {
       <View style={styles.footer}>
         <Button
           title="Getting Started"
-          buttonStyle={{ marginHorizontal: wp(3) }}
+          buttonStyle={{ marginHorizontal: wp(3), marginTop: hp(2) }}
           onPress={() => router.push('signUp')}
         />
         <View style={styles.bottomTextContainer}>
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: "center",
+    justifyContent: "space-around",
     backgroundColor: 'white',
     paddingHorizontal: wp(4)
 
@@ -70,7 +70,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     gap: 30,
-    width: '100%'
+    width: '100%',
+    marginBottom: 50,
   },
   bottomTextContainer: {
     flexDirection: 'row',

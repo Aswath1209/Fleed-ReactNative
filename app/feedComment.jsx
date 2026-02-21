@@ -14,10 +14,12 @@ import { getUserData } from '../services/userService'
 import { createNotifications } from '../services/notificationService'
 import Header from '../components/Header'
 import ScreenWrapper from '../components/ScreenWrapper'
+import { useAlert } from '../context/AlertContext';
 
 const FeedComment = () => {
     const { postId } = useLocalSearchParams();
     const { user } = useAuth();
+    const { showAlert } = useAlert();
     const router = useRouter();
     const [comments, setComments] = useState([]);
     const [startLoading, setStartLoading] = useState(true)
@@ -62,7 +64,7 @@ const FeedComment = () => {
         setStartLoading(false)
 
         if (!res.success) {
-            Alert.alert('Error', res.msg)
+            showAlert('Error', res.msg)
         }
     }
 
@@ -91,7 +93,7 @@ const FeedComment = () => {
             commentRef.current = "";
         }
         else {
-            Alert.alert("Comment", res.msg)
+            showAlert("Comment", res.msg)
         }
     }
 
@@ -100,7 +102,7 @@ const FeedComment = () => {
         if (res.success) {
             setComments(prev => prev.filter(c => c.id !== comment.id));
         } else {
-            Alert.alert('Comment', res.msg)
+            showAlert('Comment', res.msg)
         }
     }
 

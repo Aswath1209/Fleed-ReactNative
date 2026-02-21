@@ -1,4 +1,4 @@
-import { Alert, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Alert, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View, Modal, RefreshControl } from 'react-native'
 import React from 'react'
 import { useEffect, useState } from 'react'
 import ScreenWrapper from '../../components/ScreenWrapper'
@@ -14,22 +14,34 @@ import { fetchPost } from '../../services/postService'
 import PostCard from '../../components/PostCard'
 import Loading from '../../components/Loading'
 import { getUserData } from '../../services/userService'
-import { fetchFollowStatus, followUser, unfollowUser } from '../../services/followService'
+import { fetchFollowCounts, fetchFollowStatus, followUser, unfollowUser } from '../../services/followService'
 import Button from '../../components/Button'
 import { fixCurrentParams } from 'expo-router/build/fork/getPathFromState-forks'
+import { createOrGetRoom } from '../../services/chatServices'
+import { Image } from 'expo-image';
+import { BlurView } from 'expo-blur';
+import { getUserImageSrc } from '../../services/ImageService';
+import { useAlert } from '../../context/AlertContext';
+import ImageViewing from "react-native-image-viewing";
 
 var limit = 0;
 const Profile = () => {
     const { user: currentUser, setAuth } = useAuth();
+    const { showAlert } = useAlert();
     const { userId } = useLocalSearchParams();
     const router = useRouter();
+
     const targetUserId = userId || currentUser.id;
+
 
     const [posts, setPosts] = useState([]);
     const [hasMore, setHasMore] = useState(true);
     const [profileUser, setProfileUser] = useState(null);
     const [isFollowing, setIsFollowing] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [refreshing, setRefreshing] = useState(false);
+    const [followerCount, setFollowerCount] = useState(0);
+    const [followingCount, setFollowingCount] = useState(0);
 
     useEffect(() => {
         console.log('Profile: mounting');
@@ -39,7 +51,19 @@ const Profile = () => {
             limit = 0;
             getPosts();
         }
-    }, [targetUserId,currentUser,userId]);
+    }, [targetUserId, currentUser, userId]);
+
+    const fetchFollowData = async (uid) => {
+        if (!uid) return;
+        let res = await fetchFollowCounts(uid)
+        if (res.success && res.data) {
+            setFollowerCount(res.data.followers);
+            setFollowingCount(res.data.following);
+        } else {
+            setFollowerCount(0);
+            setFollowingCount(0);
+        }
+    }
 
     const checkFollowData = async (targetId) => {
         if (targetId && targetId !== currentUser.id) {
@@ -54,121 +78,150 @@ const Profile = () => {
 
     useEffect(() => {
         fetchProfileData();
-    }, [userId])
+    }, [userId, currentUser])
 
-    const fetchProfileData = async () => {
-        if (userId && userId !== currentUser.id) {
-            const res = await getUserData(userId);
-            if (res.success) {
-                setProfileUser(res.data);
-                checkFollowData(res.data.id);
-            }
-            else {
-                setProfileUser(currentUser)
-            }
-        } else {
+const fetchProfileData = async () => {
+    let uid = userId && userId !== currentUser.id ? userId : currentUser.id;
+    if (userId && userId !== currentUser.id) {
+        const res = await getUserData(userId);
+        if (res.success) {
+            setProfileUser(res.data);
+            checkFollowData(res.data.id);
+            fetchFollowData(res.data.id);
+        }
+        else {
             setProfileUser(currentUser);
+            fetchFollowData(currentUser.id);
         }
+    } else {
+        setProfileUser(currentUser);
+        fetchFollowData(currentUser.id);
     }
-
-    const onLogout = async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            Alert.alert("LogOut", "Error Signing Out")
-        }
-
-    }
-    const [isFetching, setIsFetching] = useState(false);
-
-    const getPosts = async () => {
-        if (!hasMore || isFetching) return null;
-        setIsFetching(true);
-        try {
-            limit = limit + 10;
-            let res = await fetchPost(limit, targetUserId);
-            if (res.success) {
-                if (posts.length == res.data.length) {
-                    setHasMore(false)
-                }
-                setPosts(res.data)
-            }
-        } finally {
-            setIsFetching(false);
-        }
-    }
-    const handleLogout = async () => {
-        Alert.alert("Confirm", "Are you sure you want to logout?", [
-            {
-                text: 'Cancel',
-                onPress: () => console.log("log Out Cancelled"),
-                style: 'cancel'
-            }, {
-                text: "LogOut",
-                onPress: () => onLogout(),
-                style: 'destructive'
-            }
-
-        ])
-
-    }
-
-    const follow = async () => {
-        console.log("Pressed")
-        setLoading(true);
-        const res = await followUser({ follower_id: currentUser.id, following_id: profileUser.id });
-        setLoading(false);
-        if (res.success) {
-            setIsFollowing(true);
-        } else {
-            Alert.alert("Error", res.msg);
-        }
-    }
-    const Unfollow = async () => {
-        let followeeId = profileUser?.id;
-        if (!followeeId) return;
-        setLoading(true);
-        const res = await unfollowUser(currentUser.id, followeeId)
-        setLoading(false);
-        if (res.success) {
-            setIsFollowing(false);
-        } else {
-            Alert.alert("Error", res.msg);
-        }
-    }
-    return (
-        <ScreenWrapper bg="white">
-            <FlatList
-                data={posts}
-                ListHeaderComponent={<UserHeader user={profileUser} loading={loading} router={router} handleLogout={handleLogout} isOwnProfile={targetUserId === currentUser.id} onFollow={follow} isFollowing={isFollowing} onUnfollow={Unfollow} />}
-                ListHeaderComponentStyle={{ marginBottom: 30 }}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.listStyle}
-                keyExtractor={item => item.id.toString()}
-                renderItem={({ item }) => <PostCard
-                    item={item}
-                    currentUser={currentUser}
-                    router={router}
-
-                />}
-                onEndReached={() => {
-                    getPosts();
-                }}
-                onEndReachedThreshold={0}
-                ListFooterComponent={hasMore ? (
-                    <View style={{ marginHorizontal: posts.length == 0 ? 100 : 30 }}>
-                        <Loading />
-                    </View>) : (
-                    <View style={{ marginVertical: 30 }}>
-                        <Text style={styles.noPosts}>No More Posts Available</Text>
-                    </View>
-
-                )}
-            />
-        </ScreenWrapper>
-    )
 }
 
-const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFollowing, onUnfollow, loading }) => {
+const createRoom = async () => {
+    console.log(profileUser.name)
+
+    const res = await createOrGetRoom(currentUser.id, profileUser.id);
+    if (res.success) {
+        console.log("Room created", res.data);
+        router.push({ pathname: '/chatRoom', params: { roomId: res.data.id, otherUserName: profileUser.name, otherUserImage: profileUser.image, otherUserId: profileUser.id } });
+    }
+    else {
+        showAlert(res.msg)
+    }
+}
+const onLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+        showAlert("LogOut", "Error Signing Out")
+    }
+
+}
+const [isFetching, setIsFetching] = useState(false);
+
+const getPosts = async () => {
+    if (!hasMore || isFetching) return null;
+    setIsFetching(true);
+    try {
+        limit = limit + 10;
+        let res = await fetchPost(limit, targetUserId);
+        if (res.success) {
+            if (posts.length == res.data.length) {
+                setHasMore(false)
+            }
+            setPosts(res.data)
+        }
+    } finally {
+        setIsFetching(false);
+    }
+}
+const handleLogout = async () => {
+    showAlert("Confirm", "Are you sure you want to logout?", [
+        {
+            text: 'Cancel',
+            onPress: () => console.log("log Out Cancelled"),
+            style: 'cancel'
+        }, {
+            text: "LogOut",
+            onPress: () => onLogout(),
+            style: 'destructive'
+        }
+
+    ])
+
+}
+
+const follow = async () => {
+    console.log("Pressed")
+    setLoading(true);
+    const res = await followUser({ follower_id: currentUser.id, following_id: profileUser.id });
+    setLoading(false);
+    if (res.success) {
+        setIsFollowing(true);
+        setFollowerCount(followerCount + 1);
+    } else {
+        showAlert("Error", res.msg);
+    }
+}
+const Unfollow = async () => {
+    let followeeId = profileUser?.id;
+    if (!followeeId) return;
+    setLoading(true);
+    const res = await unfollowUser(currentUser.id, followeeId)
+    setLoading(false);
+    if (res.success) {
+        setIsFollowing(false);
+        setFollowerCount(followerCount - 1);
+    } else {
+        showAlert("Error", res.msg);
+    }
+}
+const onRefresh = async () => {
+    setRefreshing(true);
+    limit = 0;
+    setHasMore(true);
+    await getPosts();
+    await fetchProfileData();
+    setRefreshing(false);
+}
+
+return (
+    <ScreenWrapper bg="white">
+        <FlatList
+            data={posts}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            ListHeaderComponent={<UserHeader user={profileUser} loading={loading} router={router} createRoom={createRoom} handleLogout={handleLogout} isOwnProfile={targetUserId === currentUser.id} onFollow={follow} isFollowing={isFollowing} onUnfollow={Unfollow} followerCount={followerCount} followingCount={followingCount} />}
+            ListHeaderComponentStyle={{ marginBottom: 30 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listStyle}
+            keyExtractor={item => item.id.toString()}
+            renderItem={({ item }) => <PostCard
+                item={item}
+                currentUser={currentUser}
+                router={router}
+
+            />}
+            onEndReached={() => {
+                getPosts();
+            }}
+            onEndReachedThreshold={0}
+            ListFooterComponent={hasMore ? (
+                <View style={{ marginHorizontal: posts.length == 0 ? 100 : 30 }}>
+                    <Loading />
+                </View>) : (
+                <View style={{ marginVertical: 30 }}>
+                    <Text style={styles.noPosts}>No More Posts Available</Text>
+                </View>
+
+            )}
+        />
+    </ScreenWrapper>
+)
+}
+
+const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFollowing, onUnfollow, loading, createRoom, followerCount, followingCount }) => {
+    const [modalVisible, setModalVisible] = useState(false);
     return (
         <View style={{ flex: 1, backgroundColor: "white", paddingHorizontal: wp(4) }}>
             <View>
@@ -178,15 +231,23 @@ const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFoll
                         <Icon name="logout" color={theme.colors.rose} />
                     </TouchableOpacity>
                 )}
-
             </View>
+
             <View style={styles.container}>
                 <View style={{ gap: 15 }}>
                     <View style={styles.avatarContainer}>
-                        <Avatar
-                            uri={user?.image}
-                            size={hp(12)}
-                            rounded={theme.radius.xxl * 1.4}
+                        <Pressable onPress={() => user?.image && setModalVisible(true)}>
+                            <Avatar
+                                uri={user?.image}
+                                size={hp(12)}
+                                rounded={theme.radius.xxl * 1.4}
+                            />
+                        </Pressable>
+                        <ImageViewing
+                            images={[{ uri: getUserImageSrc(user?.image).uri }]}
+                            imageIndex={0}
+                            visible={modalVisible}
+                            onRequestClose={() => setModalVisible(false)}
                         />
 
                         {isOwnProfile && (
@@ -195,39 +256,73 @@ const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFoll
                             </Pressable>
                         )}
                     </View>
+
                     <View style={{ alignItems: 'center', gap: 4 }}>
                         <Text style={styles.userName}>{user && user.name}</Text>
-                        <Text style={styles.infoText}>{user && user.address}</Text>
-
+                        {user && user.address && (
+                            <View style={styles.info}>
+                                <Icon name="location" size={18} color={theme.colors.textLight} />
+                                <Text style={styles.infoText}>{user.address}</Text>
+                            </View>
+                        )}
                     </View>
-                    {isOwnProfile && (
-                        <View style={styles.info}>
-                            <Icon name="mail" size={20} color={theme.colors.textLight} />
-                            <Text style={styles.infoText}>{user && user.email}</Text>
 
-                        </View>)}
-                    {user && user.phoneNumber && isOwnProfile && (
-                        <View style={styles.info}>
-                            <Icon name="call" size={20} color={theme.colors.textLight} />
-                            <Text style={styles.infoText}>{user && user.phoneNumber}</Text>
+                    <View style={styles.statsContainer}>
+                        <View style={styles.statItem}>
+                            <Text style={styles.statNumber}>{followerCount || 0}</Text>
+                            <Text style={styles.statLabel}>Followers</Text>
+                        </View>
+                        <View style={styles.divider} />
+                        <View style={styles.statItem}>
+                            <Text style={styles.statNumber}>{followingCount || 0}</Text>
+                            <Text style={styles.statLabel}>Following</Text>
+                        </View>
+                    </View>
 
+                    <View style={{ gap: 10 }}>
+                        {isOwnProfile && (
+                            <View style={styles.info}>
+                                <Icon name="mail" size={20} color={theme.colors.textLight} />
+                                <Text style={styles.infoText}>{user && user.email}</Text>
+                            </View>
+                        )}
+                        {user && user.phoneNumber && isOwnProfile && (
+                            <View style={styles.info}>
+                                <Icon name="call" size={20} color={theme.colors.textLight} />
+                                <Text style={styles.infoText}>{user && user.phoneNumber}</Text>
+                            </View>
+                        )}
+                        {user && user.bio && (
+                            <Text style={styles.bioText}>{user.bio}</Text>
+                        )}
+                    </View>
+
+                    {!isOwnProfile && (
+                        <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center', alignItems: 'center', marginTop: hp(2) }}>
+                            <Button
+                                loading={loading}
+                                title={isFollowing ? "Unfollow" : "Follow"}
+                                onPress={isFollowing ? onUnfollow : onFollow}
+                                buttonStyle={{
+                                    backgroundColor: isFollowing ? theme.colors.rose : theme.colors.primary,
+                                    paddingHorizontal: 0,
+                                    flex: 1
+                                }}
+                            />
+                            <Button
+                                title="Message"
+                                buttonStyle={{
+                                    backgroundColor: theme.colors.gray,
+                                    paddingHorizontal: 0,
+                                    flex: 1
+                                }}
+                                textStyle={{ color: theme.colors.text }}
+                                onPress={createRoom}
+                            />
                         </View>
                     )}
-                    {user && user.bio && (
-
-                        <Text style={styles.infoText}>{user && user.bio}</Text>
-                    )}
-
-
-
                 </View>
-                {!isOwnProfile && (
-                    <View>
-                        <Button loading={loading} title={isFollowing ? "Unfollow" : "Follow"} onPress={isFollowing ? onUnfollow : onFollow} buttonStyle={{ backgroundColor: isFollowing ? theme.colors.rose : theme.colors.primary }} />
-                    </View>
-                )}
             </View>
-
         </View>
     )
 }
@@ -236,9 +331,15 @@ export default Profile
 
 const styles = StyleSheet.create({
     infoText: {
-        fontSize: hp(2),
-        textAlign: 'center',
+        fontSize: hp(1.8),
         color: theme.colors.textLight
+    },
+    bioText: {
+        fontSize: hp(1.8),
+        fontWeight: '500',
+        color: theme.colors.text,
+        marginTop: 5,
+        textAlign: 'center',
     },
     logoutButton: {
         position: 'absolute',
@@ -263,8 +364,8 @@ const styles = StyleSheet.create({
     },
     editIcon: {
         position: 'absolute',
-        bottom: 4,
-        right: -6,
+        bottom: 0,
+        right: -12,
         padding: 7,
         borderRadius: 50,
         backgroundColor: 'white',
@@ -276,8 +377,8 @@ const styles = StyleSheet.create({
     },
     userName: {
         fontSize: hp(3),
-        fontWeight: '500',
-        color: theme.colors.textLight
+        fontWeight: 'bold',
+        color: theme.colors.textDark
     },
     avatarContainer: {
         height: hp(12),
@@ -291,8 +392,32 @@ const styles = StyleSheet.create({
     container: {
         flex: 1
     },
-    headerContainer: {
-        marginHorizontal: wp(4),
-        marginBottom: 20
+    statsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 30,
+        marginVertical: 15,
+        backgroundColor: theme.colors.gray,
+        paddingVertical: 10,
+        borderRadius: theme.radius.md,
+        marginHorizontal: wp(5)
+    },
+    statItem: {
+        alignItems: 'center'
+    },
+    statNumber: {
+        fontSize: hp(2.5),
+        fontWeight: 'bold',
+        color: theme.colors.textDark
+    },
+    statLabel: {
+        fontSize: hp(1.6),
+        color: theme.colors.textLight
+    },
+    divider: {
+        width: 1,
+        height: '60%',
+        backgroundColor: '#ccc'
     }
 })

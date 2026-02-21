@@ -3,10 +3,12 @@ import React, { useEffect } from 'react'
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { AlertProvider } from '../context/AlertContext';
 import { supabase } from '../lib/supabase';
 import { getUserData } from '../services/userService';
 
 import { LogBox } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
 LogBox.ignoreLogs([
   'Supabase: gotrue-js',
@@ -19,7 +21,9 @@ LogBox.ignoreLogs([
 const _layout = () => {
   return (
     <AuthProvider>
-      <MainLayout />
+      <AlertProvider>
+        <MainLayout />
+      </AlertProvider>
     </AuthProvider>
   )
 }
@@ -62,6 +66,25 @@ const MainLayout = () => {
       setUserData({ ...res.data, email })
     }
   }
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data?.roomId) {
+        console.log("Notification tapped, navigating to room:", data.roomId);
+        router.push({
+          pathname: '/chatRoom',
+          params: {
+            roomId: data.roomId,
+            otherUserId: data.senderId,
+            otherUserName: data.senderName,
+            otherUserImage: data.senderImage
+          }
+        });
+      }
+    });
+    return () => subscription.remove();
+  }, []);
   return (
     <SafeAreaProvider>
       <Stack

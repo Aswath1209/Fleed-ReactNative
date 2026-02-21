@@ -12,6 +12,7 @@ import Avatar from './Avatar'
 import { Share } from 'react-native'
 import * as Sharing from 'expo-sharing'
 import { useRouter } from 'expo-router'
+import { useAlert } from '../context/AlertContext';
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
@@ -19,11 +20,12 @@ const ReelItem = ({ item, isActive }) => {
 
     const router = useRouter();
     const { user: currentUser } = useAuth()
+    const { showAlert } = useAlert();
 
     const [likes, setLikes] = useState(item?.postLikes || [])
     const [isPaused, setIsPaused] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
-    const[loading,setLoading]=useState(false)
+    const [loading, setLoading] = useState(false)
 
     const liked = likes.filter(like => like.userId == currentUser.id)[0] ? true : false;
 
@@ -34,7 +36,7 @@ const ReelItem = ({ item, isActive }) => {
 
             let res = await removePostLike(item?.id, currentUser?.id);
             if (!res.success) {
-                Alert.alert("Post", res.msg)
+                showAlert("Post", res.msg)
             }
 
         } else {
@@ -46,7 +48,7 @@ const ReelItem = ({ item, isActive }) => {
 
             let res = await createPostLike(data);
             if (!res.success) {
-                Alert.alert("Post", res.msg)
+                showAlert("Post", res.msg)
             }
         }
 

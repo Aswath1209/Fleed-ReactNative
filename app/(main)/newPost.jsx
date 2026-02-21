@@ -14,10 +14,12 @@ import * as ImagePicker from 'expo-image-picker'
 import { getSupabaseFileUrl } from '../../services/ImageService'
 import { Video } from 'expo-av';
 import { createOrUpdatePost } from '../../services/postService'
+import { useAlert } from '../../context/AlertContext';
 
 
 const NewPost = () => {
   const post = useLocalSearchParams();
+  const { showAlert } = useAlert();
 
   const bodyRef = useRef("");
   const editorRef = useRef(null)
@@ -38,7 +40,6 @@ const NewPost = () => {
     let mediaConfig = {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3],
       quality: 0.7,
     }
     if (!isImage) {
@@ -52,7 +53,7 @@ const NewPost = () => {
     // Explicitly check permissions
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
-      Alert.alert("Permission Required", "You need to allow access to your photos to upload media.");
+      showAlert("Permission Required", "You need to allow access to your photos to upload media.");
       return;
     }
     // Alert.alert("Debug", "Permissions Granted"); // Uncomment if needed for extreme debugging
@@ -97,7 +98,7 @@ const NewPost = () => {
   const onSubmit = async () => {
     console.log("Pressed")
     if (!bodyRef.current && !file) {
-      Alert.alert("Post", "Please Choose An Image Or Text")
+      showAlert("Post", "Please Choose An Image Or Text")
       return;
     }
     let data = {
@@ -119,7 +120,7 @@ const NewPost = () => {
     }
 
     if (!res.success) {
-      Alert.alert("Post", res.msg)
+      showAlert("Post", res.msg)
     }
 
   }

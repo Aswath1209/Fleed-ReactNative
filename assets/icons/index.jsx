@@ -26,6 +26,7 @@ import Video from './Video';
 import Play from './Play';
 import Mute from './Mute';
 import Volume from './Volume';
+import Overview from './Overview';
 
 const icons = {
   home: Home,
@@ -52,6 +53,7 @@ const icons = {
   play: Play,
   mute: Mute,
   volume: Volume,
+  overview: Overview,
 }
 
 const Icon = ({ name, ...props }) => {

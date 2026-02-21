@@ -12,6 +12,8 @@ import { Video } from 'expo-av'
 import { createPostLike, removePostLike } from '../services/postService'
 import * as Sharing from 'expo-sharing'
 import Loading from './Loading'
+import { useAlert } from '../context/AlertContext';
+import ImageViewing from "react-native-image-viewing";
 
 const PostCard = ({
     item,
@@ -23,9 +25,12 @@ const PostCard = ({
     onDelete = () => { },
     onEdit = () => { }
 }) => {
+    const { showAlert } = useAlert();
 
     const [likes, setLikes] = useState([])
     const [loading, setLoading] = useState(false)
+    const [aspectRatio, setAspectRatio] = useState(1);
+    const [isImageVisible, setIsImageVisible] = useState(false);
 
     useEffect(() => {
         setLikes(item?.postLikes)
@@ -44,22 +49,43 @@ const PostCard = ({
         elevation: 1
     }
 
-    const textStyle = {
-        color: theme.colors.dark,
-        fontSize: hp(1.75)
-    }
-    const tagsStyles = {
-        div: textStyle,
-        p: textStyle,
-        ol: textStyle,
-        h1: {
-            color: theme.colors.dark
-        },
-        h4: {
-            color: theme.colors.dark
+    const tagsStyles = React.useMemo(() => {
+        const textStyle = {
+            color: theme.colors.dark,
+            fontSize: hp(1.75)
         }
-
-    }
+        return {
+            div: textStyle,
+            p: textStyle,
+            ol: textStyle,
+            h1: {
+                color: theme.colors.dark
+            },
+            h4: {
+                color: theme.colors.dark
+            },
+            b: {
+                fontWeight: 'bold',
+                color: theme.colors.dark
+            },
+            strong: {
+                fontWeight: 'bold',
+                color: theme.colors.dark
+            },
+            i: {
+                fontStyle: 'italic',
+                color: theme.colors.dark
+            },
+            em: {
+                fontStyle: 'italic',
+                color: theme.colors.dark
+            },
+            u: {
+                textDecorationLine: 'underline',
+                color: theme.colors.dark
+            }
+        }
+    }, [])
 
 
     const openPostDetails = () => {
@@ -69,7 +95,7 @@ const PostCard = ({
     }
 
     const handlePostDelete = () => {
-        Alert.alert("Confirm", "Are you sure you want to Delete?", [
+        showAlert("Confirm", "Are you sure you want to Delete?", [
             {
                 text: 'Cancel',
                 onPress: () => console.log("Delete Post Cancelled"),
@@ -95,7 +121,7 @@ const PostCard = ({
 
             let res = await removePostLike(item?.id, currentUser?.id);
             if (!res.success) {
-                Alert.alert("Post", res.msg)
+                showAlert("Post", res.msg)
             }
 
         } else {
@@ -107,10 +133,9 @@ const PostCard = ({
 
             let res = await createPostLike(data);
             if (!res.success) {
-                Alert.alert("Post", res.msg)
+                showAlert("Post", res.msg)
             }
         }
-
     }
 
 
@@ -142,7 +167,7 @@ const PostCard = ({
     return (
         <View style={[styles.container, hasShadow && shadowStyle]}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={()=>router.push({ pathname: 'profile', params: { userId: item?.user?.id } })}style={styles.userInfo}>
+                <TouchableOpacity onPress={() => router.push({ pathname: 'profile', params: { userId: item?.user?.id } })} style={styles.userInfo}>
                     <Avatar
                         size={hp(4.5)}
                         uri={item?.user?.image}
@@ -182,13 +207,26 @@ const PostCard = ({
                         )
                     }
                 </View>
+
                 {
                     item?.file && item?.file?.includes('postImages') && (
-                        <Image source={fileSource}
-                            transition={100}
-                            style={styles.postMedia}
-                            contentFit='cover'
-                        />
+                        <TouchableOpacity onPress={() => setIsImageVisible(true)}>
+                            <Image source={fileSource}
+                                transition={100}
+                                style={[styles.postMedia, { width: '100%', aspectRatio: aspectRatio }]}
+                                contentFit='cover'
+                                onLoad={(event) => {
+                                    const { width, height } = event.source;
+                                    setAspectRatio(width / height);
+                                }}
+                            />
+                            <ImageViewing
+                                images={[{ uri: fileSource.uri }]}
+                                imageIndex={0}
+                                visible={isImageVisible}
+                                onRequestClose={() => setIsImageVisible(false)}
+                            />
+                        </TouchableOpacity>
                     )
                 }
                 {
@@ -238,6 +276,7 @@ const PostCard = ({
             </View>
 
         </View>
+
     )
 }
 
@@ -267,7 +306,6 @@ const styles = StyleSheet.create({
         marginLeft: 5
     },
     postMedia: {
-        height: hp(40),
         width: '100%',
         borderRadius: theme.radius.xl,
         borderCurve: 'continuous',

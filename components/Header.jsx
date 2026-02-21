@@ -4,11 +4,14 @@ import BackButton from './BackButton'
 import { hp } from '../helpers/common'
 import { theme } from '../constants/theme'
 
+import Avatar from './Avatar'; // Import Avatar
+
 const Header = ({
   title,
   showBackButton = true,
   mb = 10,
-  router
+  router,
+  userImage // New prop
 }) => {
   return (
     <View style={[styles.container, { marginBottom: mb }]}>
@@ -19,6 +22,7 @@ const Header = ({
           </View>
         )
       }
+      {userImage && <Avatar uri={userImage} size={hp(4.5)} />}
       <Text style={styles.title}>
         {title || ""}
       </Text>
@@ -34,10 +38,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 10,
-    marginTop: 5
+    marginTop: 5,
+    paddingHorizontal: 20 // Added padding for better alignment if needed
   },
   title: {
-    fontSize: hp(2.7),
+    fontSize: hp(2.3), // Slightly reduced font size to fit with avatar
     fontWeight: theme.fonts.semiBold,
     color: theme.colors.textDark
   },

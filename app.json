@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "fleed",
-    "slug": "fleed",
+    "name": "Antigravity",
+    "slug": "antigravity",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/fleed_logo.png",
@@ -21,6 +21,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.aswath1209.fleed",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ]

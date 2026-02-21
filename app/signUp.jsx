@@ -1,4 +1,4 @@
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Pressable, StyleSheet, Text, View, KeyboardAvoidingView, ScrollView, Platform } from 'react-native'
 import React, { useRef, useState } from 'react'
 import ScreenWrapper from '../components/ScreenWrapper'
 import Icon from '../assets/icons'
@@ -10,9 +10,11 @@ import { hp, wp } from '../helpers/common'
 import Input from '../components/input'
 import Button from '../components/Button'
 import { supabase } from '../lib/supabase'
+import { useAlert } from '../context/AlertContext'
 
 const SignUp = () => {
     const router = useRouter();
+    const { showAlert } = useAlert();
     const emailRef = useRef("")
     const nameRef = useRef("")
     const passwordRef = useRef("")
@@ -20,7 +22,7 @@ const SignUp = () => {
     const onSubmit = async () => {
         console.log("pressed")
         if (!emailRef.current || !passwordRef.current || !nameRef.current) {
-            Alert.alert("SignUp", "Please fill all the field!")
+            showAlert("SignUp", "Please fill all the field!")
             return;
         }
         let name = nameRef.current.trim()
@@ -39,16 +41,13 @@ const SignUp = () => {
         });
 
         if (error) {
-            Alert.alert("SignUp", error.message)
-            setLoading(false) // moved this inside error block or after success logic to ensure it doesn't stop too early
-            return; // added return
+            showAlert("SignUp", error.message)
+            setLoading(false)
+            return;
         }
-        // console.log("session", session);
-
-
 
         if (!session) {
-            Alert.alert("SignUp Success", "Please check your inbox to enable your account!")
+            showAlert("SignUp Success", "Please check your inbox to enable your account!")
         }
 
 
@@ -57,47 +56,63 @@ const SignUp = () => {
     return (
         <ScreenWrapper bg="white">
             <StatusBar style="dark" />
-            <View style={styles.container}>
+            <View style={{ paddingHorizontal: wp(5), paddingTop: 10, paddingBottom: 10 }}>
                 <BackButton router={router} />
             </View>
-            <View>
-                <Text style={styles.welcomeText}>Let's</Text>
-                <Text style={styles.welcomeText}>Get Started</Text>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
+                <ScrollView
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    showsVerticalScrollIndicator={false}
+                >
+                    <View style={styles.container}>
 
-            </View>
-            <View style={styles.form}>
-                <Text style={{ fontSize: hp(1.5), color: theme.colors.text }}>
-                    Please Enter The Details To Create An New Account
-                </Text>
-                <Input
-                    icon={<Icon name='user' size={26} strokeWidth={1.6} />}
-                    placeholder='Enter your Name'
-                    onChangeText={value => nameRef.current = value}
-                />
-                <Input
-                    icon={<Icon name="mail" size={26} strokeWidth={1.6} />}
-                    placeholder='Enter your Email'
-                    onChangeText={value => emailRef.current = value}
-                />
-                <Input
-                    icon={<Icon name="lock" size={26} strokeWidth={1.6} />}
-                    placeholder='Enter your Password'
-                    securedTextEntry
-                    onChangeText={value => passwordRef.current = value}
-                />
 
-                <Button title={"SignUp"} loading={loading} onPress={onSubmit} />
-            </View>
-            <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                    Already Have An Account?
-                </Text>
-                <Pressable onPress={() => router.push('login')}>
-                    <Text style={[styles.footerText, { color: theme.colors.primaryDark, fontWeight: theme.fonts.semiBold }]}>
-                        Login
-                    </Text>
-                </Pressable>
-            </View>
+                        <View>
+                            <Text style={styles.welcomeText}>Let's</Text>
+                            <Text style={styles.welcomeText}>Get Started</Text>
+                        </View>
+
+                        <View style={styles.form}>
+                            <Text style={{ fontSize: hp(1.5), color: theme.colors.text }}>
+                                Please Enter The Details To Create An New Account
+                            </Text>
+                            <Input
+                                icon={<Icon name='user' size={26} strokeWidth={1.6} />}
+                                placeholder='Enter your Name'
+                                onChangeText={value => nameRef.current = value}
+                            />
+                            <Input
+                                icon={<Icon name="mail" size={26} strokeWidth={1.6} />}
+                                placeholder='Enter your Email'
+                                onChangeText={value => emailRef.current = value}
+                            />
+                            <Input
+                                icon={<Icon name="lock" size={26} strokeWidth={1.6} />}
+                                placeholder='Enter your Password'
+                                securedTextEntry
+                                onChangeText={value => passwordRef.current = value}
+                            />
+
+                            <Button title={"SignUp"} loading={loading} onPress={onSubmit} />
+                        </View>
+
+                        <View style={styles.footer}>
+                            <Text style={styles.footerText}>
+                                Already Have An Account?
+                            </Text>
+                            <Pressable onPress={() => router.push('login')}>
+                                <Text style={[styles.footerText, { color: theme.colors.primaryDark, fontWeight: theme.fonts.semiBold }]}>
+                                    Login
+                                </Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </ScreenWrapper>
     )
 }
@@ -113,7 +128,8 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         gap: 45,
-        paddingHorizontal: wp(5)
+        paddingHorizontal: wp(5),
+        justifyContent: 'center'
     },
     welcomeText: {
         fontSize: hp(4),

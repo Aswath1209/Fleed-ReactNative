@@ -13,9 +13,11 @@ import Button from '../../components/Button'
 import { updateUser } from '../../services/userService'
 import { useRouter } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
+import { useAlert } from '../../context/AlertContext';
 
 const EditProfile = () => {
     const { user: currentUser, setUserData } = useAuth();
+    const { showAlert } = useAlert();
     const [loading, setLoading] = useState(false)
     const router = useRouter()
     const [user, setUser] = useState({
@@ -43,7 +45,7 @@ const EditProfile = () => {
 
         let permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (permissionResult.granted === false) {
-            Alert.alert("Permission Required", "You need to allow access to your photos to upload an image.");
+            showAlert("Permission Required", "You need to allow access to your photos to upload an image.");
             return;
         }
         // Alert.alert("Debug", "Permissions Granted"); // Uncomment if needed for extreme debugging
@@ -65,7 +67,7 @@ const EditProfile = () => {
         let { name, phoneNumber, address, bio, image } = userData
 
         if (!name || !phoneNumber || !address || !bio) {
-            Alert.alert("Profile", "Please Fill All The Fields")
+            showAlert("Profile", "Please Fill All The Fields")
             return;
         }
         setLoading(true)
@@ -101,7 +103,7 @@ const EditProfile = () => {
         <ScreenWrapper bg="white">
             <View style={styles.container}>
                 <ScrollView style={{ flex: 1 }}>
-                    <Header title="Edit Profile" router={router}/>
+                    <Header title="Edit Profile" router={router} />
 
                     <View style={styles.form}>
                         <View style={styles.avatarContainer}>

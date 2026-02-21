@@ -1,4 +1,4 @@
-import { FlatList, RefreshControl,Pressable, StyleSheet, Text, View } from 'react-native'
+import { FlatList, RefreshControl, Pressable, StyleSheet, Text, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import ScreenWrapper from '../../components/ScreenWrapper'
 import { hp, wp } from '../../helpers/common'
@@ -82,13 +82,13 @@ const Home = () => {
     }, [user])
 
 
-const onRefresh = async() => {
-    setRefreshing(true);
-    limit=0;
-    setHasMore(true);
-    await getPosts();
-    setRefreshing(false);
-}
+    const onRefresh = async () => {
+        setRefreshing(true);
+        limit = 0;
+        setHasMore(true);
+        await getPosts();
+        setRefreshing(false);
+    }
 
 
     const [isFetching, setIsFetching] = useState(false);
@@ -110,7 +110,6 @@ const onRefresh = async() => {
         }
     }
 
-    console.log("Got Posts", post)
 
     return (
         <ScreenWrapper bg="white">
