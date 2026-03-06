@@ -1,12 +1,12 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React from 'react'
-import { hp } from '../helpers/common'
-import { theme } from '../constants/theme'
-import Avatar from './Avatar'
-import moment from 'moment'
-import Icon from '../assets/icons'
 import { useRouter } from 'expo-router'
-import { useAlert } from '../context/AlertContext';
+import moment from 'moment'
+import React from 'react'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import Icon from '../assets/icons'
+import { theme } from '../constants/theme'
+import { useAlert } from '../context/AlertContext'
+import { hp } from '../helpers/common'
+import Avatar from './Avatar'
 const CommentItem = ({
     item,
     canDelete = false,
@@ -14,6 +14,7 @@ const CommentItem = ({
     highlight = false
 }) => {
 
+    const { showAlert } = useAlert();
     const router = useRouter();
     const createdAt = moment(item?.created_at).format('MMM D');
     const handleDelete = async () => {

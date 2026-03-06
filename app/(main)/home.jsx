@@ -13,10 +13,10 @@ import Loading from '../../components/Loading'
 import { supabase } from '../../lib/supabase'
 import { getUserData } from '../../services/userService'
 
-var limit = 0;
+let limit = 0;
 
 const Home = () => {
-    const { user, setAuth } = useAuth()
+    const { user } = useAuth()
     const router = useRouter();
     const [post, setPost] = useState([])
     const [hasMore, setHasMore] = useState(true)

@@ -1,14 +1,16 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React, { useEffect } from 'react'
+import "react-native-gesture-handler";
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack, useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AlertProvider } from '../context/AlertContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getUserData } from '../services/userService';
 
-import { LogBox } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { LogBox } from 'react-native';
 
 LogBox.ignoreLogs([
   'Supabase: gotrue-js',
@@ -48,11 +50,12 @@ const MainLayout = () => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+      // Prevent routing to home if they haven't verified OTP yet
+      if (session && session.user?.email_confirmed_at) {
         setAuth(session?.user);
         updatedUserData(session?.user, session?.user?.email)
         router.replace('/home')
-      } else {
+      } else if (!session) {
         setAuth(null)
         router.replace('/welcome')
       }
@@ -78,7 +81,8 @@ const MainLayout = () => {
             roomId: data.roomId,
             otherUserId: data.senderId,
             otherUserName: data.senderName,
-            otherUserImage: data.senderImage
+            otherUserImage: data.senderImage,
+            startCall: data.isVideoCall ? 'true' : undefined
           }
         });
       }
@@ -86,32 +90,34 @@ const MainLayout = () => {
     return () => subscription.remove();
   }, []);
   return (
-    <SafeAreaProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false
-        }}
-      >
-        <Stack.Screen
-          name='postDetails'
-          options={{
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-            gestureEnabled: true
-          }}
-        />
-        <Stack.Screen
-          name='feedComment'
-          options={{
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-            gestureEnabled: true
-          }}
-        />
-      </Stack>
-
-    </SafeAreaProvider>
-
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <BottomSheetModalProvider>
+          <Stack
+            screenOptions={{
+              headerShown: false
+            }}
+          >
+            <Stack.Screen
+              name='postDetails'
+              options={{
+                presentation: 'transparentModal',
+                animation: 'fade',
+                gestureEnabled: false
+              }}
+            />
+            <Stack.Screen
+              name='feedComment'
+              options={{
+                presentation: 'transparentModal',
+                animation: 'fade',
+                gestureEnabled: false
+              }}
+            />
+          </Stack>
+        </BottomSheetModalProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }
 

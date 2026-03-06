@@ -1,17 +1,17 @@
-import { Alert, Pressable, StyleSheet, Text, View, KeyboardAvoidingView, ScrollView, Platform } from 'react-native'
-import React, { useRef, useState } from 'react'
-import ScreenWrapper from '../components/ScreenWrapper'
-import Home from '../assets/icons/Home'
-import Icon from '../assets/icons'
-import { StatusBar } from 'expo-status-bar'
-import BackButton from '../components/BackButton'
+import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { theme } from '../constants/theme'
-import { hp, wp } from '../helpers/common'
-import Input from '../components/input'
+import { StatusBar } from 'expo-status-bar'
+import React, { useRef, useState } from 'react'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import Icon from '../assets/icons'
+import BackButton from '../components/BackButton'
 import Button from '../components/Button'
-import { supabase } from '../lib/supabase'
+import Input from '../components/input'
+import ScreenWrapper from '../components/ScreenWrapper'
+import { theme } from '../constants/theme'
 import { useAlert } from '../context/AlertContext'
+import { hp, wp } from '../helpers/common'
+import { supabase } from '../lib/supabase'
 
 const Login = () => {
     const router = useRouter();
@@ -19,6 +19,7 @@ const Login = () => {
     const emailRef = useRef("")
     const passwordRef = useRef("")
     const [loading, setLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
     const onSubmit = async () => {
         if (!emailRef.current || !passwordRef.current) {
             showAlert("Login", "Please fill all the field!")
@@ -72,8 +73,13 @@ const Login = () => {
                             <Input
                                 icon={<Icon name="lock" size={26} strokeWidth={1.6} />}
                                 placeholder='Enter your Password'
-                                securedTextEntry
+                                secureTextEntry={!showPassword}
                                 onChangeText={value => passwordRef.current = value}
+                                rightIcon={
+                                    <Pressable onPress={() => setShowPassword(!showPassword)}>
+                                        <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color={theme.colors.textLight} />
+                                    </Pressable>
+                                }
                             />
                             <Text style={styles.forgotPassword}>
                                 Forgot Password?
@@ -83,7 +89,7 @@ const Login = () => {
 
                         <View style={styles.footer}>
                             <Text style={styles.footerText}>
-                                Don't have an account?
+                                Don&apos;t have an account?
                             </Text>
                             <Pressable onPress={() => router.push('signUp')}>
                                 <Text style={[styles.footerText, { color: theme.colors.primaryDark, fontWeight: theme.fonts.semiBold }]}>
@@ -132,4 +138,3 @@ const styles = StyleSheet.create({
         gap: 5,
     }
 })
-

@@ -1,29 +1,39 @@
-import { Alert, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, Text, View, Platform } from 'react-native'
-import React, { useEffect, useRef, useState } from 'react'
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { fetchChatHistory, sendMessage, markMessagesAsRead, deleteMessage } from '../../services/chatServices';
-import { supabase } from '../../lib/supabase';
-import ScreenWrapper from '../../components/ScreenWrapper';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Icon from '../../assets/icons';
+import Avatar from '../../components/Avatar';
 import Header from '../../components/Header';
 import Input from '../../components/input';
-import Icon from '../../assets/icons';
-import { useAuth } from '../../context/AuthContext';
-import Avatar from '../../components/Avatar';
-import { hp, wp, formatDate } from '../../helpers/common';
-import { theme } from '../../constants/theme';
 import Loading from '../../components/Loading';
+import ScreenWrapper from '../../components/ScreenWrapper';
+import VideoCall from '../../components/VideoCall';
+import { theme } from '../../constants/theme';
 import { useAlert } from '../../context/AlertContext';
+import { useAuth } from '../../context/AuthContext';
+import { formatDate, hp, wp } from '../../helpers/common';
+import { supabase } from '../../lib/supabase';
+import { deleteMessage, fetchChatHistory, markMessagesAsRead, sendMessage } from '../../services/chatServices';
+import { sendPushNotification } from '../../services/notificationService';
+import { getUserData } from '../../services/userService';
 
 const ChatRoom = () => {
   const { showAlert } = useAlert();
-  const { roomId, otherUserName, otherUserImage, otherUserId } = useLocalSearchParams();
+  const { roomId, otherUserName, otherUserImage, otherUserId, startCall } = useLocalSearchParams();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showVideoCall, setShowVideoCall] = useState(startCall === 'true');
   const { user } = useAuth();
   const messageRef = useRef(null);
   const router = useRouter();
   const flatListRef = useRef(null);
+
+  useEffect(() => {
+    if (startCall === 'true') {
+      setShowVideoCall(true);
+    }
+  }, [startCall]);
 
   useEffect(() => {
     fetchMessages();
@@ -74,33 +84,33 @@ const ChatRoom = () => {
   }
 
   const deleteMsg = async (item) => {
-    if(item.sender_id !== user.id){
+    if (item.sender_id !== user.id) {
       return;
     }
-        showAlert("Confirm", "Are you sure,you want to delete?", [
-            {
-                text: 'Cancel',
-                onPress: () => console.log("delete Cancelled"),
-                style: 'cancel'
-            }, {
-                text: "Delete",
-                onPress: () => onDelete(item),
-                style: 'destructive'
-            }
+    showAlert("Confirm", "Are you sure,you want to delete?", [
+      {
+        text: 'Cancel',
+        onPress: () => console.log("delete Cancelled"),
+        style: 'cancel'
+      }, {
+        text: "Delete",
+        onPress: () => onDelete(item),
+        style: 'destructive'
+      }
 
-        ])
+    ])
 
+  }
+
+  const onDelete = async (item) => {
+    console.log("Delete Item", item);
+    const res = await deleteMessage(item.id);
+    if (res.success) {
+      fetchMessages();
+    } else {
+      showAlert("Error", res.msg);
     }
-
-    const onDelete = async (item) => {
-      console.log("Delete Item", item);
-        const res = await deleteMessage(item.id);
-        if (res.success) {
-            fetchMessages();
-        } else {
-            showAlert("Error", res.msg);
-        }
-    }
+  }
 
   // Auto scroll to bottom when messages change
   useEffect(() => {
@@ -118,7 +128,7 @@ const ChatRoom = () => {
       <Pressable style={[
         styles.messageContainer,
         isMyMessage ? styles.myMessageContainer : styles.otherMessageContainer
-      ]} onLongPress={()=>deleteMsg(item)}>
+      ]} onLongPress={() => deleteMsg(item)}>
         {/* Show avatar for other user's message */}
         {!isMyMessage && (
           <Avatar
@@ -150,9 +160,68 @@ const ChatRoom = () => {
     );
   }
 
+  if (showVideoCall) {
+    return (
+      <VideoCall
+        channelName={roomId}
+        currentUserId={user?.id}
+        onClose={() => setShowVideoCall(false)}
+        otherUserName={otherUserName}
+        otherUserId={otherUserId}
+      />
+    )
+  }
+
+    const startVideoCall = () => {
+    setShowVideoCall(true);
+    // Use a unique channel for sending to avoid stale subscriptions
+    const callChannel = supabase.channel(`profile:${otherUserId}_call_signal`);
+    callChannel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        try {
+          await callChannel.send({
+            type: 'broadcast',
+            event: 'incoming_call',
+            payload: {
+              roomId: roomId,
+              senderId: user.id,
+              senderName: user.name,
+              senderImage: user.image
+            }
+          });
+        } catch (error) {
+          console.log('Failed to send incoming_call signal', error);
+        }
+
+        // Send Push Notification for background ringing
+        const { data: receiver } = await getUserData(otherUserId);
+        if (receiver && receiver.push_token) {
+          const title = "Incoming Video Call";
+          const body = `${user.name} is calling you...`;
+          const data = { roomId, senderId: user.id, senderName: user.name, senderImage: user.image, isVideoCall: true };
+          await sendPushNotification(receiver.push_token, title, body, data);
+        }
+
+        // Remove channel after sending signal so it doesn't leak memory and works next time
+        supabase.removeChannel(callChannel);
+      }
+    });
+  };
+
   return (
     <ScreenWrapper bg="white">
-      <Header title={otherUserName} router={router} userImage={otherUserImage} />
+      <Header
+        title={otherUserName}
+        router={router}
+        userImage={otherUserImage}
+        rightActions={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+            <Pressable onPress={startVideoCall} style={{ padding: 5 }}>
+              <Icon name="video" size={hp(3.5)} color={theme.colors.primary} />
+            </Pressable>
+          </View>
+        }
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}

@@ -1,16 +1,17 @@
-import { Alert, Pressable, StyleSheet, Text, View, KeyboardAvoidingView, ScrollView, Platform } from 'react-native'
-import React, { useRef, useState } from 'react'
-import ScreenWrapper from '../components/ScreenWrapper'
-import Icon from '../assets/icons'
-import { StatusBar } from 'expo-status-bar'
-import BackButton from '../components/BackButton'
+import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { theme } from '../constants/theme'
-import { hp, wp } from '../helpers/common'
-import Input from '../components/input'
+import { StatusBar } from 'expo-status-bar'
+import React, { useRef, useState } from 'react'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import Icon from '../assets/icons'
+import BackButton from '../components/BackButton'
 import Button from '../components/Button'
-import { supabase } from '../lib/supabase'
+import Input from '../components/input'
+import ScreenWrapper from '../components/ScreenWrapper'
+import { theme } from '../constants/theme'
 import { useAlert } from '../context/AlertContext'
+import { hp, wp } from '../helpers/common'
+import { supabase } from '../lib/supabase'
 
 const SignUp = () => {
     const router = useRouter();
@@ -19,6 +20,7 @@ const SignUp = () => {
     const nameRef = useRef("")
     const passwordRef = useRef("")
     const [loading, setLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
     const onSubmit = async () => {
         console.log("pressed")
         if (!emailRef.current || !passwordRef.current || !nameRef.current) {
@@ -47,10 +49,9 @@ const SignUp = () => {
         }
 
         if (!session) {
-            showAlert("SignUp Success", "Please check your inbox to enable your account!")
+            showAlert("SignUp", "Please check your inbox For Verification Code!")
         }
-
-
+        router.push({ pathname: 'verifyOtp', params: { email: email.trim() } })
         setLoading(false)
     }
     return (
@@ -72,7 +73,7 @@ const SignUp = () => {
 
 
                         <View>
-                            <Text style={styles.welcomeText}>Let's</Text>
+                            <Text style={styles.welcomeText}>Let&apos;s</Text>
                             <Text style={styles.welcomeText}>Get Started</Text>
                         </View>
 
@@ -93,8 +94,13 @@ const SignUp = () => {
                             <Input
                                 icon={<Icon name="lock" size={26} strokeWidth={1.6} />}
                                 placeholder='Enter your Password'
-                                securedTextEntry
+                                secureTextEntry={!showPassword}
                                 onChangeText={value => passwordRef.current = value}
+                                rightIcon={
+                                    <Pressable onPress={() => setShowPassword(!showPassword)}>
+                                        <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color={theme.colors.textLight} />
+                                    </Pressable>
+                                }
                             />
 
                             <Button title={"SignUp"} loading={loading} onPress={onSubmit} />
@@ -151,4 +157,3 @@ const styles = StyleSheet.create({
         gap: 5,
     }
 })
-

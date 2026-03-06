@@ -1,19 +1,19 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View, Share, Platform } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { theme } from '../constants/theme'
-import { hp, stripHtmlTags, wp } from '../helpers/common'
-import Avatar from './Avatar'
-import moment from 'moment'
-import Icon from '../assets/icons'
-import RenderHtml from 'react-native-render-html'
-import { Image } from 'expo-image'
-import { downloadFile, getSupabaseFileUrl } from '../services/ImageService'
 import { Video } from 'expo-av'
-import { createPostLike, removePostLike } from '../services/postService'
+import { Image } from 'expo-image'
 import * as Sharing from 'expo-sharing'
+import moment from 'moment'
+import React, { useEffect, useState } from 'react'
+import { Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import ImageViewing from "react-native-image-viewing"
+import RenderHtml from 'react-native-render-html'
+import Icon from '../assets/icons'
+import { theme } from '../constants/theme'
+import { useAlert } from '../context/AlertContext'
+import { hp, stripHtmlTags, wp } from '../helpers/common'
+import { downloadFile, getSupabaseFileUrl } from '../services/ImageService'
+import { createPostLike, removePostLike } from '../services/postService'
+import Avatar from './Avatar'
 import Loading from './Loading'
-import { useAlert } from '../context/AlertContext';
-import ImageViewing from "react-native-image-viewing";
 
 const PostCard = ({
     item,
@@ -213,11 +213,12 @@ const PostCard = ({
                         <TouchableOpacity onPress={() => setIsImageVisible(true)}>
                             <Image source={fileSource}
                                 transition={100}
-                                style={[styles.postMedia, { width: '100%', aspectRatio: aspectRatio }]}
+                                style={[styles.postMedia, { width: '100%', minHeight: hp(30), aspectRatio: aspectRatio }]}
                                 contentFit='cover'
                                 onLoad={(event) => {
-                                    const { width, height } = event.source;
-                                    setAspectRatio(width / height);
+                                    if (event?.source?.width && event?.source?.height) {
+                                        setAspectRatio(event.source.width / event.source.height);
+                                    }
                                 }}
                             />
                             <ImageViewing
@@ -232,13 +233,16 @@ const PostCard = ({
                 {
                     item?.file && item?.file?.includes('postVideos') && (
                         <Video
-                            style={[styles.postMedia, { height: hp(30) }]}
+                            style={[styles.postMedia, { width: '100%', aspectRatio: aspectRatio }]}
                             source={fileSource}
                             useNativeControls
-                            resizeMode='contain'
+                            resizeMode='cover'
                             isLooping={false}
                             shouldPlay={false}
                             isMuted={false}
+                            onReadyForDisplay={(e) => {
+                                setAspectRatio(e.naturalSize.width / e.naturalSize.height);
+                            }}
                         />
                     )
                 }

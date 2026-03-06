@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Enable Fleed to use your camera for video calls and posts.",
+        "NSMicrophoneUsageDescription": "Enable Fleed to use your microphone for video calls and voice notes."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +27,8 @@
       "package": "com.aswath1209.fleed",
       "googleServicesFile": "./google-services.json",
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
       ]
     },
     "web": {

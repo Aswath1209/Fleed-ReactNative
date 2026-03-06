@@ -1,38 +1,33 @@
-import { Alert, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View, Modal, RefreshControl } from 'react-native'
-import React from 'react'
-import { useEffect, useState } from 'react'
-import ScreenWrapper from '../../components/ScreenWrapper'
-import { useAuth } from '../../context/AuthContext'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import Header from '../../components/Header'
-import { hp, wp } from '../../helpers/common'
+import React, { useEffect, useState } from 'react'
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import ImageViewing from "react-native-image-viewing"
 import Icon from '../../assets/icons'
-import { theme } from '../../constants/theme'
-import { supabase } from '../../lib/supabase'
 import Avatar from '../../components/Avatar'
-import { fetchPost } from '../../services/postService'
-import PostCard from '../../components/PostCard'
-import Loading from '../../components/Loading'
-import { getUserData } from '../../services/userService'
-import { fetchFollowCounts, fetchFollowStatus, followUser, unfollowUser } from '../../services/followService'
 import Button from '../../components/Button'
-import { fixCurrentParams } from 'expo-router/build/fork/getPathFromState-forks'
+import Header from '../../components/Header'
+import Loading from '../../components/Loading'
+import PostCard from '../../components/PostCard'
+import ScreenWrapper from '../../components/ScreenWrapper'
+import { theme } from '../../constants/theme'
+import { useAlert } from '../../context/AlertContext'
+import { useAuth } from '../../context/AuthContext'
+import { hp, wp } from '../../helpers/common'
+import { supabase } from '../../lib/supabase'
 import { createOrGetRoom } from '../../services/chatServices'
-import { Image } from 'expo-image';
-import { BlurView } from 'expo-blur';
-import { getUserImageSrc } from '../../services/ImageService';
-import { useAlert } from '../../context/AlertContext';
-import ImageViewing from "react-native-image-viewing";
+import { fetchFollowCounts, fetchFollowStatus, followUser, unfollowUser } from '../../services/followService'
+import { getUserImageSrc } from '../../services/ImageService'
+import { fetchPost } from '../../services/postService'
+import { getUserData } from '../../services/userService'
 
-var limit = 0;
+let limit = 0;
 const Profile = () => {
-    const { user: currentUser, setAuth } = useAuth();
+    const { user: currentUser } = useAuth();
     const { showAlert } = useAlert();
     const { userId } = useLocalSearchParams();
     const router = useRouter();
 
-    const targetUserId = userId || currentUser.id;
-
+    const targetUserId = userId || currentUser?.id;
 
     const [posts, setPosts] = useState([]);
     const [hasMore, setHasMore] = useState(true);
@@ -66,6 +61,7 @@ const Profile = () => {
     }
 
     const checkFollowData = async (targetId) => {
+        if (!currentUser) return;
         if (targetId && targetId !== currentUser.id) {
             let res = await fetchFollowStatus(currentUser.id, targetId)
             if (res.success && res.data) {
@@ -77,147 +73,161 @@ const Profile = () => {
     }
 
     useEffect(() => {
-        fetchProfileData();
+        if (currentUser) {
+            fetchProfileData();
+        }
     }, [userId, currentUser])
 
-const fetchProfileData = async () => {
-    let uid = userId && userId !== currentUser.id ? userId : currentUser.id;
-    if (userId && userId !== currentUser.id) {
-        const res = await getUserData(userId);
+    const fetchProfileData = async () => {
+        if (!currentUser) return; // Wait until authenticated session hydrates
+        let uid = userId && userId !== currentUser?.id ? userId : currentUser?.id;
+        if (userId && userId !== currentUser?.id) {
+            const res = await getUserData(userId);
+            if (res.success) {
+                setProfileUser(res.data);
+                checkFollowData(res.data.id);
+                fetchFollowData(res.data.id);
+            }
+            else {
+                setProfileUser(currentUser);
+                if (currentUser?.id) fetchFollowData(currentUser.id);
+            }
+        } else {
+            setProfileUser(currentUser);
+            if (currentUser?.id) fetchFollowData(currentUser.id);
+        }
+    }
+
+    const createRoom = async () => {
+        if (!currentUser || !profileUser) return;
+        console.log(profileUser.name)
+
+        const res = await createOrGetRoom(currentUser.id, profileUser.id);
         if (res.success) {
-            setProfileUser(res.data);
-            checkFollowData(res.data.id);
-            fetchFollowData(res.data.id);
+            console.log("Room created", res.data);
+            router.push({ pathname: '/chatRoom', params: { roomId: res.data.id, otherUserName: profileUser.name, otherUserImage: profileUser.image, otherUserId: profileUser.id } });
         }
         else {
-            setProfileUser(currentUser);
-            fetchFollowData(currentUser.id);
+            showAlert(res.msg)
         }
-    } else {
-        setProfileUser(currentUser);
-        fetchFollowData(currentUser.id);
     }
-}
+    const onLogout = async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            showAlert("LogOut", "Error Signing Out")
+        }
 
-const createRoom = async () => {
-    console.log(profileUser.name)
-
-    const res = await createOrGetRoom(currentUser.id, profileUser.id);
-    if (res.success) {
-        console.log("Room created", res.data);
-        router.push({ pathname: '/chatRoom', params: { roomId: res.data.id, otherUserName: profileUser.name, otherUserImage: profileUser.image, otherUserId: profileUser.id } });
     }
-    else {
-        showAlert(res.msg)
-    }
-}
-const onLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-        showAlert("LogOut", "Error Signing Out")
-    }
+    const [isFetching, setIsFetching] = useState(false);
 
-}
-const [isFetching, setIsFetching] = useState(false);
-
-const getPosts = async () => {
-    if (!hasMore || isFetching) return null;
-    setIsFetching(true);
-    try {
-        limit = limit + 10;
-        let res = await fetchPost(limit, targetUserId);
-        if (res.success) {
-            if (posts.length == res.data.length) {
-                setHasMore(false)
+    const getPosts = async () => {
+        if (!hasMore || isFetching) return null;
+        setIsFetching(true);
+        try {
+            limit = limit + 10;
+            let res = await fetchPost(limit, targetUserId);
+            if (res.success) {
+                if (posts.length == res.data.length) {
+                    setHasMore(false)
+                }
+                setPosts(res.data)
             }
-            setPosts(res.data)
+        } finally {
+            setIsFetching(false);
         }
-    } finally {
-        setIsFetching(false);
     }
-}
-const handleLogout = async () => {
-    showAlert("Confirm", "Are you sure you want to logout?", [
-        {
-            text: 'Cancel',
-            onPress: () => console.log("log Out Cancelled"),
-            style: 'cancel'
-        }, {
-            text: "LogOut",
-            onPress: () => onLogout(),
-            style: 'destructive'
+    const handleLogout = async () => {
+        showAlert("Confirm", "Are you sure you want to logout?", [
+            {
+                text: 'Cancel',
+                onPress: () => console.log("log Out Cancelled"),
+                style: 'cancel'
+            }, {
+                text: "LogOut",
+                onPress: () => onLogout(),
+                style: 'destructive'
+            }
+
+        ])
+
+    }
+
+    const follow = async () => {
+        if (!currentUser || !profileUser) return;
+        console.log("Pressed")
+        setLoading(true);
+        const res = await followUser({ follower_id: currentUser.id, following_id: profileUser.id });
+        setLoading(false);
+        if (res.success) {
+            setIsFollowing(true);
+            setFollowerCount(followerCount + 1);
+        } else {
+            showAlert("Error", res.msg);
         }
-
-    ])
-
-}
-
-const follow = async () => {
-    console.log("Pressed")
-    setLoading(true);
-    const res = await followUser({ follower_id: currentUser.id, following_id: profileUser.id });
-    setLoading(false);
-    if (res.success) {
-        setIsFollowing(true);
-        setFollowerCount(followerCount + 1);
-    } else {
-        showAlert("Error", res.msg);
     }
-}
-const Unfollow = async () => {
-    let followeeId = profileUser?.id;
-    if (!followeeId) return;
-    setLoading(true);
-    const res = await unfollowUser(currentUser.id, followeeId)
-    setLoading(false);
-    if (res.success) {
-        setIsFollowing(false);
-        setFollowerCount(followerCount - 1);
-    } else {
-        showAlert("Error", res.msg);
+    const Unfollow = async () => {
+        if (!currentUser) return;
+        let followeeId = profileUser?.id;
+        if (!followeeId) return;
+        setLoading(true);
+        const res = await unfollowUser(currentUser.id, followeeId)
+        setLoading(false);
+        if (res.success) {
+            setIsFollowing(false);
+            setFollowerCount(followerCount - 1);
+        } else {
+            showAlert("Error", res.msg);
+        }
     }
-}
-const onRefresh = async () => {
-    setRefreshing(true);
-    limit = 0;
-    setHasMore(true);
-    await getPosts();
-    await fetchProfileData();
-    setRefreshing(false);
-}
+    const onRefresh = async () => {
+        setRefreshing(true);
+        limit = 0;
+        setHasMore(true);
+        await getPosts();
+        await fetchProfileData();
+        setRefreshing(false);
+    }
 
-return (
-    <ScreenWrapper bg="white">
-        <FlatList
-            data={posts}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-            ListHeaderComponent={<UserHeader user={profileUser} loading={loading} router={router} createRoom={createRoom} handleLogout={handleLogout} isOwnProfile={targetUserId === currentUser.id} onFollow={follow} isFollowing={isFollowing} onUnfollow={Unfollow} followerCount={followerCount} followingCount={followingCount} />}
-            ListHeaderComponentStyle={{ marginBottom: 30 }}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listStyle}
-            keyExtractor={item => item.id.toString()}
-            renderItem={({ item }) => <PostCard
-                item={item}
-                currentUser={currentUser}
-                router={router}
+    if (!currentUser) {
+        return (
+            <ScreenWrapper bg="white">
+                <Loading style={{ marginTop: 200 }} />
+            </ScreenWrapper>
+        )
+    }
 
-            />}
-            onEndReached={() => {
-                getPosts();
-            }}
-            onEndReachedThreshold={0}
-            ListFooterComponent={hasMore ? (
-                <View style={{ marginHorizontal: posts.length == 0 ? 100 : 30 }}>
-                    <Loading />
-                </View>) : (
-                <View style={{ marginVertical: 30 }}>
-                    <Text style={styles.noPosts}>No More Posts Available</Text>
-                </View>
+    return (
+        <ScreenWrapper bg="white">
+            <FlatList
+                data={posts}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                ListHeaderComponent={<UserHeader user={profileUser} loading={loading} router={router} createRoom={createRoom} handleLogout={handleLogout} isOwnProfile={targetUserId === currentUser?.id} onFollow={follow} isFollowing={isFollowing} onUnfollow={Unfollow} followerCount={followerCount} followingCount={followingCount} />}
+                ListHeaderComponentStyle={{ marginBottom: 30 }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.listStyle}
+                keyExtractor={item => item.id.toString()}
+                renderItem={({ item }) => <PostCard
+                    item={item}
+                    currentUser={currentUser}
+                    router={router}
 
-            )}
-        />
-    </ScreenWrapper>
-)
+                />}
+                onEndReached={() => {
+                    getPosts();
+                }}
+                onEndReachedThreshold={0}
+                ListFooterComponent={hasMore ? (
+                    <View style={{ marginHorizontal: posts.length == 0 ? 100 : 30 }}>
+                        <Loading />
+                    </View>) : (
+                    <View style={{ marginVertical: 30 }}>
+                        <Text style={styles.noPosts}>No More Posts Available</Text>
+                    </View>
+
+                )}
+            />
+        </ScreenWrapper>
+    )
 }
 
 const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFollowing, onUnfollow, loading, createRoom, followerCount, followingCount }) => {

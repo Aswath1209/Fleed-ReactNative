@@ -1,21 +1,21 @@
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React, { useEffect, useRef, useState } from 'react'
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { createComment, fetchPostDetails, removePost, removePostComment } from '../services/postService'
-import { hp, wp } from '../helpers/common'
-import { theme } from '../constants/theme'
-import PostCard from '../components/PostCard'
-import { useAuth } from '../context/AuthContext'
-import Loading from '../components/Loading'
-import Input from '../components/input'
+import React, { useEffect, useRef, useState } from 'react'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Icon from '../assets/icons'
 import CommentItem from '../components/CommentItem'
-import { supabase } from '../lib/supabase'
-import { getUserData } from '../services/userService'
-import { createNotifications } from '../services/notificationService'
 import Header from '../components/Header'
-import ScreenWrapper from '../components/ScreenWrapper'
-import { useAlert } from '../context/AlertContext';
+import Loading from '../components/Loading'
+import PostCard from '../components/PostCard'
+import Input from '../components/input'
+import { theme } from '../constants/theme'
+import { useAlert } from '../context/AlertContext'
+import { useAuth } from '../context/AuthContext'
+import { hp, wp } from '../helpers/common'
+import { supabase } from '../lib/supabase'
+import { createNotifications } from '../services/notificationService'
+import { createComment, fetchPostDetails, removePost, removePostComment } from '../services/postService'
+import { getUserData } from '../services/userService'
 
 
 const PostDetails = () => {
@@ -28,6 +28,8 @@ const PostDetails = () => {
     const [loading, setLoading] = useState(false)
     const inputRef = useRef(null);
     const commentRef = useRef('');
+    const bottomSheetRef = useRef(null);
+    const snapPoints = ['90%'];
 
     const handleNewComment = async (payload) => {
         console.log('got New Comment', payload)
@@ -60,6 +62,15 @@ const PostDetails = () => {
             supabase.removeChannel(commentsChannel)
         )
     }, [])
+
+    useEffect(() => {
+        if (!startLoading && post) {
+            // Slight delay to ensure the BottomSheetModal is mounted after loading state changes
+            setTimeout(() => {
+                bottomSheetRef.current?.present();
+            }, 50);
+        }
+    }, [startLoading, post])
 
 
 
@@ -169,72 +180,93 @@ const PostDetails = () => {
         )
     }
     return (
-        <ScreenWrapper>
-            <View style={styles.container}>
-                <Header title="Post Details" router={router} mb={10} />
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-                    <PostCard
-                        item={{ ...post, comments: [{ count: post?.comments?.length }] }}
-                        currentUser={user}
-                        router={router}
-                        hasShadow={false}
-                        showMoreIcon={false}
-                        showDelete={true}
-                        onDelete={onDeletePost}
-                        onEdit={onEditPost}
-                    />
-                    <View style={styles.inputContainer}>
-                        <Input
-                            inputRef={inputRef}
-                            placeholder="Write A Comment..."
-                            placeholderTextColor={theme.colors.textLight}
-                            containerStyle={{ flex: 1, height: hp(6.2), borderRadius: theme.radius.xl }}
-                            onChangeText={value => commentRef.current = value}
+        <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+            <BottomSheetModal
+                ref={bottomSheetRef}
+                index={0}
+                snapPoints={snapPoints}
+                onDismiss={() => router.back()}
+                enablePanDownToClose={true}
+                backgroundStyle={{ borderRadius: 30, backgroundColor: 'white' }}
+                handleIndicatorStyle={styles.dragHandle}
+            >
+                <View style={[styles.container, { paddingTop: 10 }]}>
+                    <Header title="Post Details" router={router} mb={10} showBackButton={false} />
+                    <BottomSheetScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+                        <PostCard
+                            item={{ ...post, comments: [{ count: post?.comments?.length }] }}
+                            currentUser={user}
+                            router={router}
+                            hasShadow={false}
+                            showMoreIcon={false}
+                            showDelete={true}
+                            onDelete={onDeletePost}
+                            onEdit={onEditPost}
                         />
-                        {loading ?
-                            (
-                                <View style={styles.loading}>
-                                    <Loading size="small" />
-                                </View>
-                            ) :
-                            (
-                                <TouchableOpacity style={styles.sendIcon} onPress={addComment}>
-                                    <Icon name="send" color={theme.colors.primaryDark} />
-                                </TouchableOpacity>
-                            )
-                        }
+                        <View style={styles.inputContainer}>
+                            <Input
+                                inputRef={inputRef}
+                                placeholder="Write A Comment..."
+                                placeholderTextColor={theme.colors.textLight}
+                                containerStyle={{ flex: 1, height: hp(6.2), borderRadius: theme.radius.xl }}
+                                onChangeText={value => commentRef.current = value}
+                            />
+                            {loading ?
+                                (
+                                    <View style={styles.loading}>
+                                        <Loading size="small" />
+                                    </View>
+                                ) :
+                                (
+                                    <TouchableOpacity style={styles.sendIcon} onPress={addComment}>
+                                        <Icon name="send" color={theme.colors.primaryDark} />
+                                    </TouchableOpacity>
+                                )
+                            }
 
-                    </View>
-                    <View style={{ marginVertical: 15, gap: 17 }}>
-                        {
-                            post?.comments?.map(comment =>
-                                <CommentItem
-                                    key={comment?.id?.toString()}
-                                    item={comment}
-                                    highlight={comment.id == commentId}
-                                    canDelete={user.id == comment.userId || user.id == post.userId}
-                                    onDelete={onDeleteComment}
-                                />
-                            )
-                        }
+                        </View>
+                        <View style={{ marginVertical: 15, gap: 17 }}>
+                            {
+                                post?.comments?.map(comment =>
+                                    <CommentItem
+                                        key={comment?.id?.toString()}
+                                        item={comment}
+                                        highlight={comment.id == commentId}
+                                        canDelete={user.id == comment.userId || user.id == post.userId}
+                                        onDelete={onDeleteComment}
+                                    />
+                                )
+                            }
 
-                        {
-                            post?.comments?.length == 0 && (
-                                <Text style={{ color: theme.colors.text, marginLeft: 5 }}>
-                                    Be First To Comment!
-                                </Text>
-                            )
-                        }
-                    </View>
-                </ScrollView>
-            </View>
-        </ScreenWrapper>
+                            {
+                                post?.comments?.length == 0 && (
+                                    <Text style={{ color: theme.colors.text, marginLeft: 5 }}>
+                                        Be First To Comment!
+                                    </Text>
+                                )
+                            }
+                        </View>
+                    </BottomSheetScrollView>
+                </View>
+            </BottomSheetModal>
+        </View>
     )
 }
 
 export default PostDetails
 
 const styles = StyleSheet.create({
+    dragHandleContainer: {
+        alignItems: 'center',
+        paddingTop: 10,
+        paddingBottom: 5,
+    },
+    dragHandle: {
+        width: 40,
+        height: 5,
+        backgroundColor: theme.colors.darkLight,
+        borderRadius: 5,
+    },
     loading: {
         height: hp(5.8),
         width: hp(5.8),

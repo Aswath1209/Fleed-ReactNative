@@ -1,20 +1,20 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View, FlatList, KeyboardAvoidingView, Platform } from 'react-native'
-import React, { useEffect, useRef, useState } from 'react'
+import { BottomSheetFlatList, BottomSheetModal } from '@gorhom/bottom-sheet'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { createComment, fetchPostDetails, removePostComment } from '../services/postService'
-import { hp, wp } from '../helpers/common'
-import { theme } from '../constants/theme'
-import { useAuth } from '../context/AuthContext'
-import Loading from '../components/Loading'
-import Input from '../components/input'
+import React, { useEffect, useRef, useState } from 'react'
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import Icon from '../assets/icons'
 import CommentItem from '../components/CommentItem'
-import { supabase } from '../lib/supabase'
-import { getUserData } from '../services/userService'
-import { createNotifications } from '../services/notificationService'
 import Header from '../components/Header'
-import ScreenWrapper from '../components/ScreenWrapper'
-import { useAlert } from '../context/AlertContext';
+import Loading from '../components/Loading'
+import Input from '../components/input'
+import { theme } from '../constants/theme'
+import { useAlert } from '../context/AlertContext'
+import { useAuth } from '../context/AuthContext'
+import { hp, wp } from '../helpers/common'
+import { supabase } from '../lib/supabase'
+import { createNotifications } from '../services/notificationService'
+import { createComment, fetchPostDetails, removePostComment } from '../services/postService'
+import { getUserData } from '../services/userService'
 
 const FeedComment = () => {
     const { postId } = useLocalSearchParams();
@@ -26,6 +26,8 @@ const FeedComment = () => {
     const [loading, setLoading] = useState(false)
     const inputRef = useRef(null);
     const commentRef = useRef('');
+    const bottomSheetRef = useRef(null);
+    const snapPoints = ['85%'];
     const [postOwnerId, setPostOwnerId] = useState(null);
 
     const handleNewComment = async (payload) => {
@@ -53,6 +55,14 @@ const FeedComment = () => {
             supabase.removeChannel(commentsChannel)
         )
     }, [])
+
+    useEffect(() => {
+        if (!startLoading) {
+            setTimeout(() => {
+                bottomSheetRef.current?.present();
+            }, 50);
+        }
+    }, [startLoading])
 
     const getPostDetails = async () => {
         let res = await fetchPostDetails(postId)
@@ -115,58 +125,78 @@ const FeedComment = () => {
     }
 
     return (
-        <ScreenWrapper bg="white">
-            <View style={styles.container}>
-                <Header title="Comments" router={router} mb={10} />
+        <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+            <BottomSheetModal
+                ref={bottomSheetRef}
+                index={0}
+                snapPoints={snapPoints}
+                onDismiss={() => router.back()}
+                enablePanDownToClose={true}
+                backgroundStyle={{ borderRadius: 30, backgroundColor: 'white' }}
+                handleIndicatorStyle={styles.dragHandle}
+            >
+                <View style={styles.container}>
+                    <Header title="Comments" router={router} mb={10} showBackButton={false} />
 
-                <FlatList
-                    data={comments}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.list}
-                    keyExtractor={item => item.id.toString()}
-                    renderItem={({ item }) => (
-                        <CommentItem
-                            item={item}
-                            canDelete={user.id == item.userId || user.id == postOwnerId}
-                            onDelete={onDeleteComment}
-                        />
-                    )}
-                    ListEmptyComponent={
-                        <View style={{ marginTop: 50, alignItems: 'center' }}>
-                            <Text style={{ color: theme.colors.text }}>No comments yet. Be the first!</Text>
-                        </View>
-                    }
-                />
-
-                <KeyboardAvoidingView behavior={Platform.OS == 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={10}>
-                    <View style={styles.inputContainer}>
-                        <Input
-                            inputRef={inputRef}
-                            placeholder="Add a comment..."
-                            placeholderTextColor={theme.colors.textLight}
-                            containerStyle={{ flex: 1, height: hp(6.2), borderRadius: theme.radius.xl }}
-                            onChangeText={value => commentRef.current = value}
-                        />
-                        {loading ? (
-                            <View style={styles.loading}>
-                                <Loading size="small" />
-                            </View>
-                        ) : (
-                            <TouchableOpacity style={styles.sendIcon} onPress={addComment}>
-                                <Icon name="send" color={theme.colors.primaryDark} />
-                            </TouchableOpacity>
+                    <BottomSheetFlatList
+                        data={comments}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.list}
+                        keyExtractor={item => item.id.toString()}
+                        renderItem={({ item }) => (
+                            <CommentItem
+                                item={item}
+                                canDelete={user.id == item.userId || user.id == postOwnerId}
+                                onDelete={onDeleteComment}
+                            />
                         )}
-                    </View>
-                </KeyboardAvoidingView>
+                        ListEmptyComponent={
+                            <View style={{ marginTop: 50, alignItems: 'center' }}>
+                                <Text style={{ color: theme.colors.text }}>No comments yet. Be the first!</Text>
+                            </View>
+                        }
+                    />
 
-            </View>
-        </ScreenWrapper>
+                    <KeyboardAvoidingView behavior={Platform.OS == 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={10}>
+                        <View style={styles.inputContainer}>
+                            <Input
+                                inputRef={inputRef}
+                                placeholder="Add a comment..."
+                                placeholderTextColor={theme.colors.textLight}
+                                containerStyle={{ flex: 1, height: hp(6.2), borderRadius: theme.radius.xl }}
+                                onChangeText={value => commentRef.current = value}
+                            />
+                            {loading ? (
+                                <View style={styles.loading}>
+                                    <Loading size="small" />
+                                </View>
+                            ) : (
+                                <TouchableOpacity style={styles.sendIcon} onPress={addComment}>
+                                    <Icon name="send" color={theme.colors.primaryDark} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            </BottomSheetModal>
+        </View>
     )
 }
 
 export default FeedComment
 
 const styles = StyleSheet.create({
+    dragHandleContainer: {
+        alignItems: 'center',
+        paddingTop: 10,
+        paddingBottom: 5,
+    },
+    dragHandle: {
+        width: 40,
+        height: 5,
+        backgroundColor: theme.colors.darkLight,
+        borderRadius: 5,
+    },
     center: {
         flex: 1,
         alignItems: 'center',

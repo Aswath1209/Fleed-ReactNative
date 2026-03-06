@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
+    "@gorhom/bottom-sheet": "^5.2.8",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
@@ -43,8 +44,10 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-agora": "^4.5.3",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-image-viewing": "^0.2.2",
+    "react-native-otp-textinput": "^1.1.7",
     "react-native-pell-rich-editor": "^1.10.0",
     "react-native-reanimated": "~4.1.1",
     "react-native-render-html": "^6.3.4",

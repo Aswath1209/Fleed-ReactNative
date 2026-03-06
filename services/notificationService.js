@@ -1,6 +1,6 @@
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 
@@ -99,6 +99,26 @@ export const fetchNotifications = async (receiverId) => {
         }
         return { success: true, data };
     } catch (error) {
+        return { success: false, msg: error.message };
+    }
+}
+
+export const createNotifications = async (notify) => {
+    try {
+        const { data, error } = await supabase
+            .from('notifications')
+            .insert(notify)
+            .select()
+            .single();
+
+        if (error) {
+            console.log('Error creating notification', error);
+            return { success: false, msg: error.message };
+        }
+
+        return { success: true, data };
+    } catch (error) {
+        console.log('Error creating notification', error);
         return { success: false, msg: error.message };
     }
 }
