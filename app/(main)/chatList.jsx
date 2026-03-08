@@ -6,12 +6,14 @@ import { supabase } from '../../lib/supabase';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import ChatListItem from '../../components/ChatListItem';
 import { useFocusEffect } from 'expo-router';
-
 import { useAlert } from '../../context/AlertContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const ChatList = () => {
   const { user } = useAuth();
   const { showAlert } = useAlert();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [chats, setChats] = useState([]);
 
   useEffect(() => {
@@ -71,15 +73,15 @@ const ChatList = () => {
 
   if (!chats.length) {
     return (
-      <ScreenWrapper>
+      <ScreenWrapper bg={theme.colors.background}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ fontSize: 16, fontWeight: 'bold' }}>No chats yet</Text>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>No chats yet</Text>
         </View>
       </ScreenWrapper>
     )
   }
   return (
-    <ScreenWrapper>
+    <ScreenWrapper bg={theme.colors.background}>
       <FlatList
         data={chats}
         renderItem={({ item }) => (
@@ -93,4 +95,4 @@ const ChatList = () => {
 
 export default ChatList
 
-const styles = StyleSheet.create({})
+const createStyles = (theme) => StyleSheet.create({})

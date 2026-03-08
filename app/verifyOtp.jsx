@@ -5,7 +5,7 @@ import OTPTextView from 'react-native-otp-textinput'
 import BackButton from '../components/BackButton'
 import Button from '../components/Button'
 import ScreenWrapper from '../components/ScreenWrapper'
-import { theme } from '../constants/theme'
+import { useTheme } from '../context/ThemeContext'
 import { useAlert } from '../context/AlertContext'
 import { hp, wp } from '../helpers/common'
 import { supabase } from '../lib/supabase'
@@ -14,6 +14,8 @@ const VerifyOtp = () => {
     const router = useRouter()
     const { email } = useLocalSearchParams();
     const { showAlert } = useAlert()
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
     const otpRef = useRef('')
     const [loading, setLoading] = useState(false)
 
@@ -40,7 +42,7 @@ const VerifyOtp = () => {
     }
 
     return (
-        <ScreenWrapper bg='white'>
+        <ScreenWrapper bg={theme.colors.background}>
             {/* The Back button should be self-contained at the top */}
             <View style={{ paddingHorizontal: wp(5), paddingTop: 10, paddingBottom: 10 }}>
                 <BackButton router={router} />
@@ -74,7 +76,7 @@ const VerifyOtp = () => {
 
 export default VerifyOtp
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
         gap: 30,
@@ -84,12 +86,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: hp(4),
         fontWeight: theme.fonts.bold,
-        color: '#000000',
+        color: theme.colors.textDark,
 
     },
     subTitle: {
         fontSize: hp(2),
-        color: '#666666',
+        color: theme.colors.text,
         marginTop: 10
     },
     form: {
@@ -103,14 +105,14 @@ const styles = StyleSheet.create({
     },
     otpInput: {
         borderWidth: 1.5,
-        borderColor: theme.colors.textLight,
+        borderColor: theme.colors.border,
         borderRadius: theme.radius.xl,
         width: wp(12),
         height: hp(6.5),
-        color: '#000000',
+        color: theme.colors.text,
         fontSize: hp(2.5),
         fontWeight: theme.fonts.bold,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderBottomWidth: 1.5 // Override the library's default bottom border
     }
 })

@@ -1,10 +1,13 @@
 import React from 'react'
 import { StyleSheet, TextInput, View } from 'react-native'
-import { theme } from '../constants/theme'
+import { useTheme } from '../context/ThemeContext'
 import { hp } from '../helpers/common'
 
 
 const Input = (props) => {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+
   return (
     <View style={[styles.container, props.containerStyle && props.containerStyle]}>
       {
@@ -24,7 +27,7 @@ const Input = (props) => {
 
 export default Input
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     height: hp(7.2),

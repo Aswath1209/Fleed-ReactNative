@@ -22,7 +22,7 @@ import Delete from './Delete';
 import Logout from './logout';
 import Image from './Image';
 import Video from './Video';
-
+import Trophy from './Trophy';
 import Play from './Play';
 import Mute from './Mute';
 import Volume from './Volume';
@@ -54,6 +54,7 @@ const icons = {
   mute: Mute,
   volume: Volume,
   overview: Overview,
+  trophy: Trophy,
 }
 
 const Icon = ({ name, ...props }) => {

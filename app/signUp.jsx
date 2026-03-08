@@ -8,7 +8,7 @@ import BackButton from '../components/BackButton'
 import Button from '../components/Button'
 import Input from '../components/input'
 import ScreenWrapper from '../components/ScreenWrapper'
-import { theme } from '../constants/theme'
+import { useTheme } from '../context/ThemeContext'
 import { useAlert } from '../context/AlertContext'
 import { hp, wp } from '../helpers/common'
 import { supabase } from '../lib/supabase'
@@ -16,6 +16,9 @@ import { supabase } from '../lib/supabase'
 const SignUp = () => {
     const router = useRouter();
     const { showAlert } = useAlert();
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+
     const emailRef = useRef("")
     const nameRef = useRef("")
     const passwordRef = useRef("")
@@ -55,8 +58,8 @@ const SignUp = () => {
         setLoading(false)
     }
     return (
-        <ScreenWrapper bg="white">
-            <StatusBar style="dark" />
+        <ScreenWrapper bg={theme.colors.background}>
+            <StatusBar style={theme.colors.background === '#ffffff' ? "dark" : "light"} />
             <View style={{ paddingHorizontal: wp(5), paddingTop: 10, paddingBottom: 10 }}>
                 <BackButton router={router} />
             </View>
@@ -125,7 +128,7 @@ const SignUp = () => {
 
 export default SignUp
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     footerText: {
         textAlign: 'center',
         color: theme.colors.text,

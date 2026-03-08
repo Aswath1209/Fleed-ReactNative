@@ -6,11 +6,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AlertProvider } from '../context/AlertContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import { ThemeProvider } from '../context/ThemeContext'; // Import ThemeProvider
 import { supabase } from '../lib/supabase';
 import { getUserData } from '../services/userService';
 
 import * as Notifications from 'expo-notifications';
-import { LogBox } from 'react-native';
+import { LogBox, useColorScheme } from 'react-native';
 
 LogBox.ignoreLogs([
   'Supabase: gotrue-js',
@@ -20,13 +21,24 @@ LogBox.ignoreLogs([
   'Warning: TRenderEngineProvider'
 ]);
 
+// Instructs Expo how to handle incoming notifications when the app is in the foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 const _layout = () => {
   return (
-    <AuthProvider>
-      <AlertProvider>
-        <MainLayout />
-      </AlertProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AlertProvider>
+          <MainLayout />
+        </AlertProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
@@ -73,8 +85,10 @@ const MainLayout = () => {
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
+      console.log('Notification tapped, data:', data);
+
+      // Chat room / video call notification
       if (data?.roomId) {
-        console.log("Notification tapped, navigating to room:", data.roomId);
         router.push({
           pathname: '/chatRoom',
           params: {
@@ -85,6 +99,33 @@ const MainLayout = () => {
             startCall: data.isVideoCall ? 'true' : undefined
           }
         });
+        return;
+      }
+
+      // Comment or like notification — navigate to post
+      if (data?.postId) {
+        try {
+          const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+          router.push({
+            pathname: '/postDetails',
+            params: {
+              postId: parsed.postId,
+              commentId: parsed.commentId ?? null
+            }
+          });
+        } catch (e) {
+          console.log('Failed to parse notification data:', e);
+        }
+        return;
+      }
+
+      // Challenge notification
+      if (data?.challengeId) {
+        router.push({
+          pathname: '/challengeDetails',
+          params: { challengeId: data.challengeId }
+        });
+        return;
       }
     });
     return () => subscription.remove();

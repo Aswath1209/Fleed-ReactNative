@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import BackButton from './BackButton'
 import { hp } from '../helpers/common'
-import { theme } from '../constants/theme'
+import { useTheme } from '../context/ThemeContext'
 
 import Avatar from './Avatar'; // Import Avatar
 
@@ -14,6 +14,9 @@ const Header = ({
   userImage, // New prop
   rightActions // Prop for adding buttons on the right
 }) => {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+
   return (
     <View style={[styles.container, { marginBottom: mb }]}>
       {
@@ -38,7 +41,7 @@ const Header = ({
 
 export default Header
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     justifyContent: "center",

@@ -5,12 +5,14 @@ import Avatar from './Avatar';
 import { useRouter } from 'expo-router';
 import { createOrGetRoom } from '../services/chatServices';
 import { hp, wp, formatDate } from '../helpers/common'; // Import formatDate
-import { theme } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { TouchableOpacity } from 'react-native';
 
 const ChatListItem = ({ item }) => {
     const { user } = useAuth();
     const router = useRouter();
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
 
     const otherUser = item.user_id_1 === user.id ? item.user2 : item.user1;
     const hasUnread = item.unreadCount > 0;
@@ -54,14 +56,14 @@ const ChatListItem = ({ item }) => {
 
 export default ChatListItem
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 10,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderBottomWidth: 0.5,
-        borderBottomColor: 'rgba(0,0,0,0.1)'
+        borderBottomColor: theme.colors.border
     },
     content: {
         flex: 1,

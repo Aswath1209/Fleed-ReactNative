@@ -1,21 +1,19 @@
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import React, { useEffect, useState } from 'react'
+import { useFocusEffect, useRouter } from 'expo-router'
+import React, { useEffect, useState, useCallback } from 'react'
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import ImageViewing from "react-native-image-viewing"
 import Icon from '../../assets/icons'
 import Avatar from '../../components/Avatar'
-import Button from '../../components/Button'
 import Header from '../../components/Header'
 import Loading from '../../components/Loading'
 import PostCard from '../../components/PostCard'
 import ScreenWrapper from '../../components/ScreenWrapper'
-import { theme } from '../../constants/theme'
+import { useTheme } from '../../context/ThemeContext'
 import { useAlert } from '../../context/AlertContext'
 import { useAuth } from '../../context/AuthContext'
 import { hp, wp } from '../../helpers/common'
 import { supabase } from '../../lib/supabase'
-import { createOrGetRoom } from '../../services/chatServices'
-import { fetchFollowCounts, fetchFollowStatus, followUser, unfollowUser } from '../../services/followService'
+import { fetchFollowCounts } from '../../services/followService'
 import { getUserImageSrc } from '../../services/ImageService'
 import { fetchPost } from '../../services/postService'
 import { getUserData } from '../../services/userService'
@@ -24,29 +22,63 @@ let limit = 0;
 const Profile = () => {
     const { user: currentUser } = useAuth();
     const { showAlert } = useAlert();
-    const { userId } = useLocalSearchParams();
     const router = useRouter();
-
-    const targetUserId = userId || currentUser?.id;
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
 
     const [posts, setPosts] = useState([]);
     const [hasMore, setHasMore] = useState(true);
     const [profileUser, setProfileUser] = useState(null);
-    const [isFollowing, setIsFollowing] = useState(false)
-    const [loading, setLoading] = useState(false)
     const [refreshing, setRefreshing] = useState(false);
     const [followerCount, setFollowerCount] = useState(0);
     const [followingCount, setFollowingCount] = useState(0);
+    const [isFetching, setIsFetching] = useState(false);
 
     useEffect(() => {
-        console.log('Profile: mounting');
         if (currentUser) {
             setPosts([]);
             setHasMore(true);
             limit = 0;
             getPosts();
         }
-    }, [targetUserId, currentUser, userId]);
+    }, [currentUser]);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (currentUser) fetchProfileData();
+        }, [currentUser])
+    );
+
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const handleUserUpdate = (payload) => {
+            if (payload.eventType === 'UPDATE' && payload.new && payload.new.xp !== undefined) {
+                setProfileUser(prevUser => {
+                    if (prevUser && prevUser.id === payload.new.id) {
+                        return { ...prevUser, xp: payload.new.xp };
+                    }
+                    return prevUser;
+                });
+            }
+        };
+
+        const userIdToWatch = currentUser.id;
+
+        let userChannel = supabase
+            .channel(`public:users:${userIdToWatch}`)
+            .on('postgres_changes', { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'users', 
+                filter: `id=eq.${userIdToWatch}` 
+            }, handleUserUpdate)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(userChannel);
+        };
+    }, [currentUser]);
 
     const fetchFollowData = async (uid) => {
         if (!uid) return;
@@ -60,72 +92,31 @@ const Profile = () => {
         }
     }
 
-    const checkFollowData = async (targetId) => {
-        if (!currentUser) return;
-        if (targetId && targetId !== currentUser.id) {
-            let res = await fetchFollowStatus(currentUser.id, targetId)
-            if (res.success && res.data) {
-                setIsFollowing(true)
-            } else {
-                setIsFollowing(false)
-            }
-        }
-    }
-
-    useEffect(() => {
-        if (currentUser) {
-            fetchProfileData();
-        }
-    }, [userId, currentUser])
-
     const fetchProfileData = async () => {
-        if (!currentUser) return; // Wait until authenticated session hydrates
-        let uid = userId && userId !== currentUser?.id ? userId : currentUser?.id;
-        if (userId && userId !== currentUser?.id) {
-            const res = await getUserData(userId);
-            if (res.success) {
-                setProfileUser(res.data);
-                checkFollowData(res.data.id);
-                fetchFollowData(res.data.id);
-            }
-            else {
-                setProfileUser(currentUser);
-                if (currentUser?.id) fetchFollowData(currentUser.id);
-            }
+        if (!currentUser) return; 
+        const res = await getUserData(currentUser.id);
+        if (res.success) {
+            setProfileUser(res.data);
+            fetchFollowData(res.data.id);
         } else {
             setProfileUser(currentUser);
-            if (currentUser?.id) fetchFollowData(currentUser.id);
+            fetchFollowData(currentUser.id);
         }
     }
 
-    const createRoom = async () => {
-        if (!currentUser || !profileUser) return;
-        console.log(profileUser.name)
-
-        const res = await createOrGetRoom(currentUser.id, profileUser.id);
-        if (res.success) {
-            console.log("Room created", res.data);
-            router.push({ pathname: '/chatRoom', params: { roomId: res.data.id, otherUserName: profileUser.name, otherUserImage: profileUser.image, otherUserId: profileUser.id } });
-        }
-        else {
-            showAlert(res.msg)
-        }
-    }
     const onLogout = async () => {
         const { error } = await supabase.auth.signOut();
         if (error) {
             showAlert("LogOut", "Error Signing Out")
         }
-
     }
-    const [isFetching, setIsFetching] = useState(false);
 
     const getPosts = async () => {
-        if (!hasMore || isFetching) return null;
+        if (!hasMore || isFetching || !currentUser) return null;
         setIsFetching(true);
         try {
             limit = limit + 10;
-            let res = await fetchPost(limit, targetUserId);
+            let res = await fetchPost(limit, currentUser.id);
             if (res.success) {
                 if (posts.length == res.data.length) {
                     setHasMore(false)
@@ -136,49 +127,20 @@ const Profile = () => {
             setIsFetching(false);
         }
     }
+
     const handleLogout = async () => {
         showAlert("Confirm", "Are you sure you want to logout?", [
             {
                 text: 'Cancel',
-                onPress: () => console.log("log Out Cancelled"),
                 style: 'cancel'
             }, {
                 text: "LogOut",
                 onPress: () => onLogout(),
                 style: 'destructive'
             }
-
         ])
-
     }
 
-    const follow = async () => {
-        if (!currentUser || !profileUser) return;
-        console.log("Pressed")
-        setLoading(true);
-        const res = await followUser({ follower_id: currentUser.id, following_id: profileUser.id });
-        setLoading(false);
-        if (res.success) {
-            setIsFollowing(true);
-            setFollowerCount(followerCount + 1);
-        } else {
-            showAlert("Error", res.msg);
-        }
-    }
-    const Unfollow = async () => {
-        if (!currentUser) return;
-        let followeeId = profileUser?.id;
-        if (!followeeId) return;
-        setLoading(true);
-        const res = await unfollowUser(currentUser.id, followeeId)
-        setLoading(false);
-        if (res.success) {
-            setIsFollowing(false);
-            setFollowerCount(followerCount - 1);
-        } else {
-            showAlert("Error", res.msg);
-        }
-    }
     const onRefresh = async () => {
         setRefreshing(true);
         limit = 0;
@@ -190,148 +152,154 @@ const Profile = () => {
 
     if (!currentUser) {
         return (
-            <ScreenWrapper bg="white">
+            <ScreenWrapper bg={theme.colors.background}>
                 <Loading style={{ marginTop: 200 }} />
             </ScreenWrapper>
         )
     }
 
     return (
-        <ScreenWrapper bg="white">
+        <ScreenWrapper bg={theme.colors.background}>
             <FlatList
                 data={posts}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                ListHeaderComponent={<UserHeader user={profileUser} loading={loading} router={router} createRoom={createRoom} handleLogout={handleLogout} isOwnProfile={targetUserId === currentUser?.id} onFollow={follow} isFollowing={isFollowing} onUnfollow={Unfollow} followerCount={followerCount} followingCount={followingCount} />}
+                ListHeaderComponent={<UserHeader user={profileUser} router={router} handleLogout={handleLogout} followerCount={followerCount} followingCount={followingCount} />}
                 ListHeaderComponentStyle={{ marginBottom: 30 }}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.listStyle}
                 keyExtractor={item => item.id.toString()}
-                renderItem={({ item }) => <PostCard
-                    item={item}
-                    currentUser={currentUser}
-                    router={router}
-
-                />}
-                onEndReached={() => {
-                    getPosts();
-                }}
+                renderItem={({ item }) => <PostCard item={item} currentUser={currentUser} router={router} />}
+                onEndReached={getPosts}
                 onEndReachedThreshold={0}
                 ListFooterComponent={hasMore ? (
                     <View style={{ marginHorizontal: posts.length == 0 ? 100 : 30 }}>
                         <Loading />
                     </View>) : (
                     <View style={{ marginVertical: 30 }}>
-                        <Text style={styles.noPosts}>No More Posts Available</Text>
+                        <Text style={styles.noPosts}>
+                            {posts.length === 0 ? "No posts yet" : "No More Posts Available"}
+                        </Text>
                     </View>
-
                 )}
             />
         </ScreenWrapper>
     )
 }
 
-const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFollowing, onUnfollow, loading, createRoom, followerCount, followingCount }) => {
+const UserHeader = ({ user, router, handleLogout, followerCount, followingCount }) => {
     const [modalVisible, setModalVisible] = useState(false);
+    const [settingsVisible, setSettingsVisible] = useState(false);
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+    
     return (
-        <View style={{ flex: 1, backgroundColor: "white", paddingHorizontal: wp(4) }}>
-            <View>
-                <Header title="Profile" mb={30} router={router} showBackButton={false} />
-                {isOwnProfile && (
-                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                        <Icon name="logout" color={theme.colors.rose} />
+        <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingHorizontal: wp(4) }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <Header title="My Profile" mb={0} router={router} showBackButton={false} />
+                <TouchableOpacity onPress={() => setSettingsVisible(!settingsVisible)} style={{ padding: 5 }}>
+                    <Icon name="threeDotsHorizontal" size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+            </View>
+
+            {/* Settings Dropdown Overlay */}
+            {settingsVisible && (
+                <View style={styles.settingsDropdown}>
+                    <TouchableOpacity style={styles.dropdownItem} onPress={() => {
+                        setSettingsVisible(false);
+                        handleLogout();
+                    }}>
+                        <Icon name="logout" size={20} color={theme.colors.rose} />
+                        <Text style={[styles.dropdownText, { color: theme.colors.rose }]}>Log Out</Text>
                     </TouchableOpacity>
+                </View>
+            )}
+
+            <View style={styles.headerGrid}>
+                {/* Left side: Avatar */}
+                <View style={styles.avatarColumn}>
+                    <Pressable onPress={() => user?.image && setModalVisible(true)}>
+                        <Avatar
+                            uri={user?.image}
+                            size={hp(10.5)}
+                            rounded={theme.radius.xxl * 1.4}
+                            showRank={true}
+                            xp={user?.xp || 0}
+                        />
+                    </Pressable>
+                    <ImageViewing
+                        images={[{ uri: getUserImageSrc(user?.image).uri }]}
+                        imageIndex={0}
+                        visible={modalVisible}
+                        onRequestClose={() => setModalVisible(false)}
+                    />
+                </View>
+
+                {/* Right side: Stats Grid */}
+                <View style={styles.statsColumn}>
+                    <View style={styles.statBox}>
+                        <Text style={styles.statVal}>{Math.floor((user?.xp || 0) / 100) + 1}</Text>
+                        <Text style={styles.statLabel}>Level</Text>
+                    </View>
+                    <View style={styles.statBox}>
+                        <Text style={styles.statVal}>{followerCount || 0}</Text>
+                        <Text style={styles.statLabel}>Followers</Text>
+                    </View>
+                    <View style={styles.statBox}>
+                        <Text style={styles.statVal}>{followingCount || 0}</Text>
+                        <Text style={styles.statLabel}>Following</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* User Info (Bio & Location) */}
+            <View style={styles.infoSection}>
+                <Text style={styles.userName}>{user?.name}</Text>
+                
+                {user?.address && (
+                    <View style={styles.infoRow}>
+                        <Icon name="location" size={16} color={theme.colors.textLight} />
+                        <Text style={styles.infoText}>{user.address}</Text>
+                    </View>
+                )}
+                
+                {user?.bio && (
+                    <Text style={styles.bioText}>{user.bio}</Text>
                 )}
             </View>
 
-            <View style={styles.container}>
-                <View style={{ gap: 15 }}>
-                    <View style={styles.avatarContainer}>
-                        <Pressable onPress={() => user?.image && setModalVisible(true)}>
-                            <Avatar
-                                uri={user?.image}
-                                size={hp(12)}
-                                rounded={theme.radius.xxl * 1.4}
-                            />
-                        </Pressable>
-                        <ImageViewing
-                            images={[{ uri: getUserImageSrc(user?.image).uri }]}
-                            imageIndex={0}
-                            visible={modalVisible}
-                            onRequestClose={() => setModalVisible(false)}
-                        />
+            {/* Level Progress Bar below the bio */}
+            <View style={styles.levelProgressContainer}>
+                <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${(user?.xp || 0) % 100}%` }]} />
+                </View>
+                <Text style={styles.progressText}>
+                    {(user?.xp || 0) % 100} / 100 XP to Level {Math.floor((user?.xp || 0) / 100) + 2}
+                </Text>
+            </View>
 
-                        {isOwnProfile && (
-                            <Pressable style={styles.editIcon} onPress={() => router.push('editProfile')}>
-                                <Icon name="edit" strokeWidth={2.5} />
-                            </Pressable>
-                        )}
-                    </View>
-
-                    <View style={{ alignItems: 'center', gap: 4 }}>
-                        <Text style={styles.userName}>{user && user.name}</Text>
-                        {user && user.address && (
-                            <View style={styles.info}>
-                                <Icon name="location" size={18} color={theme.colors.textLight} />
-                                <Text style={styles.infoText}>{user.address}</Text>
-                            </View>
-                        )}
-                    </View>
-
-                    <View style={styles.statsContainer}>
-                        <View style={styles.statItem}>
-                            <Text style={styles.statNumber}>{followerCount || 0}</Text>
-                            <Text style={styles.statLabel}>Followers</Text>
-                        </View>
-                        <View style={styles.divider} />
-                        <View style={styles.statItem}>
-                            <Text style={styles.statNumber}>{followingCount || 0}</Text>
-                            <Text style={styles.statLabel}>Following</Text>
-                        </View>
-                    </View>
-
-                    <View style={{ gap: 10 }}>
-                        {isOwnProfile && (
-                            <View style={styles.info}>
-                                <Icon name="mail" size={20} color={theme.colors.textLight} />
-                                <Text style={styles.infoText}>{user && user.email}</Text>
-                            </View>
-                        )}
-                        {user && user.phoneNumber && isOwnProfile && (
-                            <View style={styles.info}>
-                                <Icon name="call" size={20} color={theme.colors.textLight} />
-                                <Text style={styles.infoText}>{user && user.phoneNumber}</Text>
-                            </View>
-                        )}
-                        {user && user.bio && (
-                            <Text style={styles.bioText}>{user.bio}</Text>
-                        )}
-                    </View>
-
-                    {!isOwnProfile && (
-                        <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center', alignItems: 'center', marginTop: hp(2) }}>
-                            <Button
-                                loading={loading}
-                                title={isFollowing ? "Unfollow" : "Follow"}
-                                onPress={isFollowing ? onUnfollow : onFollow}
-                                buttonStyle={{
-                                    backgroundColor: isFollowing ? theme.colors.rose : theme.colors.primary,
-                                    paddingHorizontal: 0,
-                                    flex: 1
-                                }}
-                            />
-                            <Button
-                                title="Message"
-                                buttonStyle={{
-                                    backgroundColor: theme.colors.gray,
-                                    paddingHorizontal: 0,
-                                    flex: 1
-                                }}
-                                textStyle={{ color: theme.colors.text }}
-                                onPress={createRoom}
-                            />
+            {/* Private Contact Options aligned horizontally */}
+            {(user?.email || user?.phoneNumber) && (
+                 <View style={styles.contactContainer}>
+                    {user.email && (
+                        <View style={styles.contactChip}>
+                            <Icon name="mail" size={16} color={theme.colors.textLight} />
+                            <Text style={styles.contactText}>{user.email}</Text>
                         </View>
                     )}
-                </View>
+                    {user.phoneNumber && (
+                        <View style={styles.contactChip}>
+                            <Icon name="call" size={16} color={theme.colors.textLight} />
+                            <Text style={styles.contactText}>{user.phoneNumber}</Text>
+                        </View>
+                    )}
+                 </View>
+            )}
+
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+                <TouchableOpacity style={styles.editBtn} onPress={() => router.push('editProfile')}>
+                    <Text style={styles.editBtnText}>Edit Profile</Text>
+                </TouchableOpacity>
             </View>
         </View>
     )
@@ -339,25 +307,7 @@ const UserHeader = ({ user, router, handleLogout, isOwnProfile, onFollow, isFoll
 
 export default Profile
 
-const styles = StyleSheet.create({
-    infoText: {
-        fontSize: hp(1.8),
-        color: theme.colors.textLight
-    },
-    bioText: {
-        fontSize: hp(1.8),
-        fontWeight: '500',
-        color: theme.colors.text,
-        marginTop: 5,
-        textAlign: 'center',
-    },
-    logoutButton: {
-        position: 'absolute',
-        right: 0,
-        padding: 5,
-        borderRadius: theme.radius.sm,
-        backgroundColor: '#fee2e3'
-    },
+const createStyles = (theme) => StyleSheet.create({
     listStyle: {
         paddingHorizontal: wp(4),
         paddingBottom: 30
@@ -367,67 +317,150 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: theme.colors.text
     },
-    info: {
+    headerGrid: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10
+        justifyContent: 'space-between',
+        marginTop: hp(1),
+        paddingHorizontal: wp(2),
     },
-    editIcon: {
-        position: 'absolute',
-        bottom: 0,
-        right: -12,
-        padding: 7,
-        borderRadius: 50,
-        backgroundColor: 'white',
-        shadowColor: theme.colors.textLight,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 5,
-        elevation: 7
+    avatarColumn: {
+        marginRight: wp(5),
     },
-    userName: {
-        fontSize: hp(3),
-        fontWeight: 'bold',
-        color: theme.colors.textDark
-    },
-    avatarContainer: {
-        height: hp(12),
-        width: hp(12),
-        alignSelf: 'center'
-    },
-    headerShape: {
-        width: wp(100),
-        height: hp(20)
-    },
-    container: {
-        flex: 1
-    },
-    statsContainer: {
+    statsColumn: {
+        flex: 1,
         flexDirection: 'row',
-        justifyContent: 'center',
+        justifyContent: 'space-around',
         alignItems: 'center',
-        gap: 30,
-        marginVertical: 15,
-        backgroundColor: theme.colors.gray,
-        paddingVertical: 10,
-        borderRadius: theme.radius.md,
-        marginHorizontal: wp(5)
     },
-    statItem: {
-        alignItems: 'center'
+    statBox: {
+        alignItems: 'center',
     },
-    statNumber: {
-        fontSize: hp(2.5),
-        fontWeight: 'bold',
-        color: theme.colors.textDark
+    statVal: {
+        fontSize: hp(2.4),
+        fontWeight: theme.fonts.bold,
+        color: theme.colors.textDark,
     },
     statLabel: {
         fontSize: hp(1.6),
-        color: theme.colors.textLight
+        color: theme.colors.textLight,
+        fontWeight: theme.fonts.medium,
+        marginTop: 2,
     },
-    divider: {
-        width: 1,
-        height: '60%',
-        backgroundColor: '#ccc'
+    infoSection: {
+        marginTop: hp(2),
+        paddingHorizontal: wp(2),
+        marginBottom: hp(2)
+    },
+    userName: {
+        fontSize: hp(2.2),
+        fontWeight: theme.fonts.bold,
+        color: theme.colors.textDark,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 4,
+    },
+    infoText: {
+        fontSize: hp(1.7),
+        color: theme.colors.textLight,
+    },
+    bioText: {
+        fontSize: hp(1.8),
+        color: theme.colors.text,
+        marginTop: 8,
+        lineHeight: hp(2.5),
+    },
+    contactContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+        paddingHorizontal: wp(2),
+        marginBottom: hp(2)
+    },
+    contactChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.radius.sm,
+        borderWidth: 1,
+        borderColor: theme.colors.border
+    },
+    contactText: {
+        fontSize: hp(1.6),
+        color: theme.colors.textLight,
+    },
+    levelProgressContainer: {
+        paddingHorizontal: wp(2),
+        marginBottom: hp(3),
+    },
+    progressBarBg: {
+        width: '100%',
+        height: 6,
+        backgroundColor: theme.colors.gray,
+        borderRadius: 4,
+        overflow: 'hidden',
+        marginBottom: 6,
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: theme.colors.primary,
+        borderRadius: 4,
+    },
+    progressText: {
+        fontSize: hp(1.5),
+        color: theme.colors.textLight,
+        fontWeight: theme.fonts.medium,
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingHorizontal: wp(2)
+    },
+    editBtn: {
+        flex: 1,
+        backgroundColor: theme.colors.primary,
+        paddingVertical: hp(1.2),
+        borderRadius: theme.radius.sm,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    editBtnText: {
+        color: 'white',
+        fontSize: hp(1.8),
+        fontWeight: theme.fonts.semibold
+    },
+    settingsDropdown: {
+        position: 'absolute',
+        top: 50,
+        right: wp(4),
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.radius.md,
+        padding: 5,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        shadowColor: theme.colors.dark,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 5,
+        zIndex: 50
+    },
+    dropdownItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        padding: 10,
+        paddingHorizontal: 15
+    },
+    dropdownText: {
+        fontSize: hp(1.8),
+        fontWeight: theme.fonts.medium
     }
-})
+});

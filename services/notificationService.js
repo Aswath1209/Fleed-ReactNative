@@ -14,8 +14,8 @@ export const registerForPushNotificationsAsync = async () => {
 
     try {
         if (Platform.OS === 'android') {
-            await Notifications.setNotificationChannelAsync('default', {
-                name: 'default',
+            await Notifications.setNotificationChannelAsync('fleed_alerts', {
+                name: 'Fleed Alerts',
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 250, 250, 250],
                 lightColor: '#FF231F7C',
@@ -71,6 +71,7 @@ export const sendPushNotification = async (expoPushToken, title, body, data) => 
         title,
         body,
         data,
+        channelId: 'fleed_alerts', // Explicitly map to our new high-priority channel
     };
     await fetch('https://exp.host/--/api/v2/push/send', {
         method: 'POST',

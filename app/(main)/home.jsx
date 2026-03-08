@@ -2,8 +2,8 @@ import { FlatList, RefreshControl, Pressable, StyleSheet, Text, View } from 'rea
 import React, { useEffect, useState } from 'react'
 import ScreenWrapper from '../../components/ScreenWrapper'
 import { hp, wp } from '../../helpers/common'
-import { theme } from '../../constants/theme'
 import Icon from '../../assets/icons'
+import { useTheme } from '../../context/ThemeContext' // Use dynamic theme
 import { useRouter } from 'expo-router'
 import Avatar from '../../components/Avatar'
 import { useAuth } from '../../context/AuthContext'
@@ -16,7 +16,10 @@ import { getUserData } from '../../services/userService'
 let limit = 0;
 
 const Home = () => {
-    const { user } = useAuth()
+    const { user } = useAuth();
+    const { theme } = useTheme(); // Hook into our awesome new dark mode!
+    const styles = createStyles(theme); // Pass it to our styles
+
     const router = useRouter();
     const [post, setPost] = useState([])
     const [hasMore, setHasMore] = useState(true)
@@ -184,9 +187,9 @@ const Home = () => {
 
 export default Home
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     pillText: {
-        color: 'white',
+        color: theme.colors.textDark, // Ensure it contrasts with the primary background
         fontSize: hp(1.2),
         fontWeight: theme.fonts.bold
     },

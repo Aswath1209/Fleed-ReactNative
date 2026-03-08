@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext';
 import { fetchNotifications } from '../../services/notificationService';
 import { hp, wp } from '../../helpers/common';
-import { theme } from '../../constants/theme';
+import { useTheme } from '../../context/ThemeContext';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import NotificationItem from '../../components/NotificationItem';
 import { useRouter } from 'expo-router';
@@ -12,6 +12,8 @@ import Header from '../../components/Header';
 const Notifications = () => {
   const { user } = useAuth()
   const router = useRouter()
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -26,7 +28,7 @@ const Notifications = () => {
   }
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper bg={theme.colors.background}>
       <Header title="Notifications" router={router}/>
       <View style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.listStyle}>
@@ -54,7 +56,7 @@ const Notifications = () => {
 
 export default Notifications
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: wp(4),

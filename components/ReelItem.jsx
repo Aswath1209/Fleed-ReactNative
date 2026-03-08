@@ -7,7 +7,7 @@ import { downloadFile, getSupabaseFileUrl, getUserImageSrc } from '../services/I
 import Icon from '../assets/icons'
 import { createPostLike, removePostLike } from '../services/postService'
 import { useAuth } from '../context/AuthContext'
-import { theme } from '../constants/theme'
+import { useTheme } from '../context/ThemeContext'
 import Avatar from './Avatar'
 import { Share } from 'react-native'
 import * as Sharing from 'expo-sharing'
@@ -21,6 +21,8 @@ const ReelItem = ({ item, isActive }) => {
     const router = useRouter();
     const { user: currentUser } = useAuth()
     const { showAlert } = useAlert();
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
 
     const [likes, setLikes] = useState(item?.postLikes || [])
     const [isPaused, setIsPaused] = useState(false);
@@ -114,11 +116,19 @@ const ReelItem = ({ item, isActive }) => {
 
                 {/* Content Section (Bottom Left) */}
                 <View style={styles.content}>
-                    <TouchableOpacity onPress={() => router.push({ pathname: 'profile', params: { userId: item?.user?.id } })} style={styles.userRow}>
+                    <TouchableOpacity onPress={() => {
+                        if (item?.user?.id === currentUser?.id) {
+                            router.push('/profile');
+                        } else {
+                            router.push({ pathname: '/userProfile', params: { userId: item?.user?.id } });
+                        }
+                    }} style={styles.userRow}>
                         <Avatar
                             uri={item?.user?.image}
-                            size={hp(5)}
+                            size={hp(4.5)}
                             rounded={theme.radius.xl}
+                            showRank={true}
+                            xp={item?.user?.xp || 0}
                         />
                         <Text style={styles.username}>{item?.user?.name}</Text>
                     </TouchableOpacity>
@@ -153,7 +163,7 @@ const ReelItem = ({ item, isActive }) => {
 
 export default ReelItem
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     container: {
         width: screenWidth,
         height: screenHeight, // Explicit height for paging

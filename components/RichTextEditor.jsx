@@ -1,11 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import { actions, RichEditor, RichToolbar } from 'react-native-pell-rich-editor'
-import { theme } from '../constants/theme'
+import { useTheme } from '../context/ThemeContext'
 
 const RichTextEditor = ({
   editorRef, onChange, ...otherProps
 }) => {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   return (
     <View style={{ minHeight: 285 }}>
       <RichToolbar
@@ -49,7 +51,7 @@ const RichTextEditor = ({
 
 export default RichTextEditor
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   richBar: {
     borderTopRightRadius: theme.radius.xl,
     borderTopLeftRadius: theme.radius.xl,
@@ -62,11 +64,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderTopRightRadius: theme.radius.xl,
     borderTopLeftRadius: theme.radius.xl,
-    borderColor: theme.colors.gray,
+    borderColor: theme.colors.border,
     padding: 5
   },
   contentStyle: {
     color: theme.colors.textDark,
+    backgroundColor: theme.colors.surface,
     placeholderColor: 'gray'
   },
   flatStyle: {

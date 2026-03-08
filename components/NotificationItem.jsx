@@ -1,6 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React from 'react'
-import { theme } from '../constants/theme'
+import { useTheme } from '../context/ThemeContext'
 import { hp } from '../helpers/common'
 import Avatar from './Avatar'
 import moment from 'moment'
@@ -9,14 +9,25 @@ const NotificationItem = ({
     item,
     router
 }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
 
      const createdAt = moment(item?.created_at).format('MMM D')
        
     const handleClick = () => {
-        const{postId,commentId}=JSON.parse(item?.data);
-         router.push({ pathname: 'postDetails', params: { postId,commentId} })
+        try {
+            const parsed = typeof item?.data === 'string' ? JSON.parse(item.data) : (item?.data ?? {});
 
-
+            if (parsed.postId) {
+                router.push({ pathname: 'postDetails', params: { postId: parsed.postId, commentId: parsed.commentId ?? null } });
+            } else if (parsed.challengeId) {
+                router.push({ pathname: 'challengeDetails', params: { challengeId: parsed.challengeId } });
+            } else if (parsed.roomId) {
+                router.push({ pathname: 'chatRoom', params: { roomId: parsed.roomId, otherUserId: parsed.senderId } });
+            }
+        } catch (e) {
+            console.log('NotificationItem: failed to parse data', e);
+        }
     }
     return (
         <TouchableOpacity style={styles.container} onPress={handleClick}>
@@ -41,16 +52,16 @@ const NotificationItem = ({
 
 export default NotificationItem
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     container: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 12,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderWidth: 0.5,
-        borderColor: theme.colors.darkLight,
+        borderColor: theme.colors.border,
         padding: 15,
         borderRadius: theme.radius.xxl,
         borderCurve: 'continuous'

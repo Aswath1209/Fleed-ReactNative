@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase';
 
 const AGORA_APP_ID = '744e49d7007248fc85a436dc1a5af14a';
 
-const VideoCall = ({ channelName, onClose, currentUserId, otherUserName, otherUserId, useAvatarMode = true }) => {
+const VideoCall = ({ channelName, onClose, currentUserId, otherUserName, otherUserId, useAvatarMode = false }) => {
     const agoraEngineRef = useRef(null); // Agora engine instance
     const [isJoined, setIsJoined] = useState(false); // Indicates if the local user has joined the channel
     const [remoteUid, setRemoteUid] = useState(0); // Uid of the remote user

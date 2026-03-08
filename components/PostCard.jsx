@@ -7,8 +7,8 @@ import { Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import ImageViewing from "react-native-image-viewing"
 import RenderHtml from 'react-native-render-html'
 import Icon from '../assets/icons'
-import { theme } from '../constants/theme'
 import { useAlert } from '../context/AlertContext'
+import { useTheme } from '../context/ThemeContext'
 import { hp, stripHtmlTags, wp } from '../helpers/common'
 import { downloadFile, getSupabaseFileUrl } from '../services/ImageService'
 import { createPostLike, removePostLike } from '../services/postService'
@@ -26,6 +26,8 @@ const PostCard = ({
     onEdit = () => { }
 }) => {
     const { showAlert } = useAlert();
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
 
     const [likes, setLikes] = useState([])
     const [loading, setLoading] = useState(false)
@@ -85,7 +87,7 @@ const PostCard = ({
                 color: theme.colors.dark
             }
         }
-    }, [])
+    }, [theme])
 
 
     const openPostDetails = () => {
@@ -167,11 +169,19 @@ const PostCard = ({
     return (
         <View style={[styles.container, hasShadow && shadowStyle]}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.push({ pathname: 'profile', params: { userId: item?.user?.id } })} style={styles.userInfo}>
+                <TouchableOpacity onPress={() => {
+                    if (item?.user?.id === currentUser?.id) {
+                        router.push('/profile');
+                    } else {
+                        router.push({ pathname: '/userProfile', params: { userId: item?.user?.id } });
+                    }
+                }} style={styles.userInfo}>
                     <Avatar
                         size={hp(4.5)}
                         uri={item?.user?.image}
                         rounded={theme.radius.md}
+                        showRank={true}
+                        xp={item?.user?.xp || 0}
                     />
                     <View style={{ gap: 2 }}>
                         <Text style={styles.username}>{item?.user?.name}</Text>
@@ -286,7 +296,7 @@ const PostCard = ({
 
 export default PostCard
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     count: {
         color: theme.colors.text,
         fontSize: hp(1.8),
@@ -343,9 +353,9 @@ const styles = StyleSheet.create({
         borderCurve: 'continuous',
         padding: 10,
         paddingVertical: 12,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderWidth: 0.5,
-        borderColor: theme.colors.gray,
+        borderColor: theme.colors.border,
         shadowColor: '#000'
     }
 })

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import React from 'react'
-import { theme } from '../constants/theme'
+import { useTheme } from '../context/ThemeContext'
 import { hp } from '../helpers/common'
 import Loading from './Loading'
 
@@ -13,6 +13,8 @@ const Button = ({
     hasShadow=true,
 
 }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
 
     const shadowStyle={
         shadowColor:theme.colors.dark,
@@ -23,7 +25,7 @@ const Button = ({
     }
     if(loading){
         return(
-            <View style={[styles.button,buttonStyle,{backgroundColor:'white'}]}>
+            <View style={[styles.button,buttonStyle,{backgroundColor: theme.colors.surface}]}>
             <Loading/>
             </View>
         )
@@ -37,7 +39,7 @@ const Button = ({
 
 export default Button
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     button:{
         backgroundColor:theme.colors.primary,
         height:hp(6.6),

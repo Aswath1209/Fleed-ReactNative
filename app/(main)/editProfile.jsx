@@ -2,7 +2,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import React, { useEffect, useState } from 'react'
 import ScreenWrapper from '../../components/ScreenWrapper'
 import { hp, wp } from '../../helpers/common'
-import { theme } from '../../constants/theme'
+import { useTheme } from '../../context/ThemeContext'
 import Header from '../../components/Header'
 import { Image } from 'expo-image'
 import { useAuth } from '../../context/AuthContext'
@@ -18,6 +18,8 @@ import { useAlert } from '../../context/AlertContext';
 const EditProfile = () => {
     const { user: currentUser, setUserData } = useAuth();
     const { showAlert } = useAlert();
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
     const [loading, setLoading] = useState(false)
     const router = useRouter()
     const [user, setUser] = useState({
@@ -100,7 +102,7 @@ const EditProfile = () => {
 
     let imageSource = user.image && typeof user.image == 'object' ? user.image.uri : getUserImageSrc(user.image)
     return (
-        <ScreenWrapper bg="white">
+        <ScreenWrapper bg={theme.colors.background}>
             <View style={styles.container}>
                 <ScrollView style={{ flex: 1 }}>
                     <Header title="Edit Profile" router={router} />
@@ -152,7 +154,7 @@ const EditProfile = () => {
 
 export default EditProfile
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     bio: {
         flexDirection: 'row',
         height: hp(15),
@@ -162,7 +164,7 @@ const styles = StyleSheet.create({
     input: {
         flexDirection: 'row',
         borderWidth: 0.4,
-        borderColor: theme.colors.text,
+        borderColor: theme.colors.border,
         borderRadius: theme.radius.xxl,
         borderCurve: 'continuous',
         padding: 17,
@@ -179,7 +181,7 @@ const styles = StyleSheet.create({
         right: -10,
         padding: 8,
         borderRadius: 50,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         shadowColor: theme.colors.textLight,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.4,

@@ -7,11 +7,12 @@ import CommentItem from '../components/CommentItem'
 import Header from '../components/Header'
 import Loading from '../components/Loading'
 import Input from '../components/input'
-import { theme } from '../constants/theme'
 import { useAlert } from '../context/AlertContext'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { hp, wp } from '../helpers/common'
 import { supabase } from '../lib/supabase'
+import { uploadFile } from '../services/ImageService'
 import { createNotifications } from '../services/notificationService'
 import { createComment, fetchPostDetails, removePostComment } from '../services/postService'
 import { getUserData } from '../services/userService'
@@ -21,6 +22,8 @@ const FeedComment = () => {
     const { user } = useAuth();
     const { showAlert } = useAlert();
     const router = useRouter();
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
     const [comments, setComments] = useState([]);
     const [startLoading, setStartLoading] = useState(true)
     const [loading, setLoading] = useState(false)
@@ -80,12 +83,14 @@ const FeedComment = () => {
 
     const addComment = async () => {
         if (!commentRef.current) return null;
+
+        setLoading(true)
+
         let data = {
             userId: user?.id,
             postId: postId,
             text: commentRef.current
         }
-        setLoading(true)
         let res = await createComment(data);
 
         setLoading(false);
@@ -132,7 +137,8 @@ const FeedComment = () => {
                 snapPoints={snapPoints}
                 onDismiss={() => router.back()}
                 enablePanDownToClose={true}
-                backgroundStyle={{ borderRadius: 30, backgroundColor: 'white' }}
+                enableDynamicSizing={false}
+                backgroundStyle={{ borderRadius: 30, backgroundColor: theme.colors.surface }}
                 handleIndicatorStyle={styles.dragHandle}
             >
                 <View style={styles.container}>
@@ -185,7 +191,7 @@ const FeedComment = () => {
 
 export default FeedComment
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     dragHandleContainer: {
         alignItems: 'center',
         paddingTop: 10,
@@ -204,7 +210,7 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         paddingHorizontal: wp(4),
         paddingBottom: 20
     },
@@ -216,7 +222,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 10,
         paddingTop: 10,
-        backgroundColor: 'white'
+        backgroundColor: theme.colors.surface
     },
     loading: {
         height: hp(5.8),
@@ -233,5 +239,5 @@ const styles = StyleSheet.create({
         borderCurve: 'continuous',
         height: hp(5.8),
         width: hp(5.8),
-    }
+    },
 })

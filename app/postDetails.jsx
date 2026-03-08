@@ -8,11 +8,12 @@ import Header from '../components/Header'
 import Loading from '../components/Loading'
 import PostCard from '../components/PostCard'
 import Input from '../components/input'
-import { theme } from '../constants/theme'
 import { useAlert } from '../context/AlertContext'
 import { useAuth } from '../context/AuthContext'
+import { useTheme } from '../context/ThemeContext'
 import { hp, wp } from '../helpers/common'
 import { supabase } from '../lib/supabase'
+import { uploadFile } from '../services/ImageService'
 import { createNotifications } from '../services/notificationService'
 import { createComment, fetchPostDetails, removePost, removePostComment } from '../services/postService'
 import { getUserData } from '../services/userService'
@@ -23,6 +24,8 @@ const PostDetails = () => {
     const { showAlert } = useAlert();
     const { user } = useAuth();
     const router = useRouter();
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
     const [post, setPost] = useState(null);
     const [startLoading, setStartLoading] = useState(true)
     const [loading, setLoading] = useState(false)
@@ -97,12 +100,14 @@ const PostDetails = () => {
     const addComment = async () => {
         console.log("add Comment Pressed");
         if (!commentRef.current) return null;
+
+        setLoading(true)
+
         let data = {
             userId: user?.id,
             postId: post?.id,
-            text: commentRef.current
+            text: commentRef.current,
         }
-        setLoading(true)
         let res = await createComment(data);
 
         setLoading(false);
@@ -187,7 +192,8 @@ const PostDetails = () => {
                 snapPoints={snapPoints}
                 onDismiss={() => router.back()}
                 enablePanDownToClose={true}
-                backgroundStyle={{ borderRadius: 30, backgroundColor: 'white' }}
+                enableDynamicSizing={false}
+                backgroundStyle={{ borderRadius: 30, backgroundColor: theme.colors.surface }}
                 handleIndicatorStyle={styles.dragHandle}
             >
                 <View style={[styles.container, { paddingTop: 10 }]}>
@@ -255,7 +261,7 @@ const PostDetails = () => {
 
 export default PostDetails
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
     dragHandleContainer: {
         alignItems: 'center',
         paddingTop: 10,
@@ -304,7 +310,7 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         paddingHorizontal: wp(7)
     }
 })

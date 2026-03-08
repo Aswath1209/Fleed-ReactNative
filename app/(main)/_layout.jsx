@@ -3,14 +3,17 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../../assets/icons';
+import Avatar from '../../components/Avatar';
 import IncomingCallModal from '../../components/IncomingCallModal';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { updatePushToken } from '../../services/notificationService';
 
 export default function MainLayout() {
     const { user } = useAuth();
+    const { theme } = useTheme();
     const withInsets = useSafeAreaInsets();
     const [incomingCall, setIncomingCall] = useState(null);
     const router = useRouter();
@@ -86,7 +89,9 @@ export default function MainLayout() {
                         {
                             height: 60 + withInsets.bottom,
                             paddingBottom: withInsets.bottom + 5,
-                            paddingTop: 10
+                            paddingTop: 10,
+                            backgroundColor: theme.colors.surface,
+                            borderTopColor: theme.colors.border
                         }
                     ],
                     tabBarActiveTintColor: theme.colors.primary,
@@ -102,13 +107,14 @@ export default function MainLayout() {
                         title: 'Home'
                     }}
                 />
+                
                 <Tabs.Screen
-                    name="search"
+                    name="challenges"
                     options={{
                         tabBarIcon: ({ color, size }) => (
-                            <Icon name="search" color={color} size={size} />
+                            <Icon name="trophy" color={color} size={size} />
                         ),
-                        title: 'Search'
+                        title: 'Challenges'
                     }}
                 />
 
@@ -149,27 +155,19 @@ export default function MainLayout() {
                     name="profile"
                     options={{
                         tabBarIcon: ({ color, size }) => (
-                            <Icon name="user" color={color} size={size} />
+                            <Avatar uri={user?.image} size={size * 1.2} rounded={theme.radius.sm} style={{ borderWidth: 2, borderColor: color }} />
                         ),
-                        title: 'Profile',
-                        href: null
-
+                        title: 'Profile'
                     }}
                 />
 
-                <Tabs.Screen
-                    name="chatRoom"
-                    options={{
-                        href: null,
-                        tabBarStyle: { display: 'none' } // Hide tab bar in chat room usually
-                    }}
-                />
-
-                {/* Hide other screens from the tab bar but keep them in the stack/tab context */}
+                {/* Keep these screens in the stack but hide them from the Tab Bar */}
                 <Tabs.Screen name="editProfile" options={{ href: null }} />
                 <Tabs.Screen name="notifications" options={{ href: null }} />
                 <Tabs.Screen name="postDetails" options={{ href: null }} />
                 <Tabs.Screen name="feedComment" options={{ href: null }} />
+                <Tabs.Screen name="createChallenge" options={{ href: null }} />
+                <Tabs.Screen name="userProfile" options={{ href: null }} />
 
 
             </Tabs>
@@ -184,9 +182,7 @@ export default function MainLayout() {
 
 const styles = StyleSheet.create({
     tabBar: {
-        backgroundColor: 'white',
         borderTopWidth: 1,
-        borderTopColor: theme.colors.gray,
         // Height and padding are now dynamic
     },
     addPostButton: {

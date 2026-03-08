@@ -1,24 +1,26 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Icon from '../../assets/icons';
-import Avatar from '../../components/Avatar';
-import Header from '../../components/Header';
-import Input from '../../components/input';
-import Loading from '../../components/Loading';
-import ScreenWrapper from '../../components/ScreenWrapper';
-import VideoCall from '../../components/VideoCall';
-import { theme } from '../../constants/theme';
-import { useAlert } from '../../context/AlertContext';
-import { useAuth } from '../../context/AuthContext';
-import { formatDate, hp, wp } from '../../helpers/common';
-import { supabase } from '../../lib/supabase';
-import { deleteMessage, fetchChatHistory, markMessagesAsRead, sendMessage } from '../../services/chatServices';
-import { sendPushNotification } from '../../services/notificationService';
-import { getUserData } from '../../services/userService';
+import Icon from '../assets/icons';
+import Avatar from '../components/Avatar';
+import Header from '../components/Header';
+import Input from '../components/input';
+import Loading from '../components/Loading';
+import ScreenWrapper from '../components/ScreenWrapper';
+import VideoCall from '../components/VideoCall';
+import { useTheme } from '../context/ThemeContext';
+import { useAlert } from '../context/AlertContext';
+import { useAuth } from '../context/AuthContext';
+import { formatDate, hp, wp } from '../helpers/common';
+import { supabase } from '../lib/supabase';
+import { deleteMessage, fetchChatHistory, markMessagesAsRead, sendMessage } from '../services/chatServices';
+import { sendPushNotification } from '../services/notificationService';
+import { getUserData } from '../services/userService';
 
 const ChatRoom = () => {
   const { showAlert } = useAlert();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const { roomId, otherUserName, otherUserImage, otherUserId, startCall } = useLocalSearchParams();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -268,10 +270,10 @@ const ChatRoom = () => {
 
 export default ChatRoom
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white'
+    backgroundColor: theme.colors.background
   },
   listContainer: {
     flex: 1,
@@ -303,10 +305,10 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 2,
   },
   otherMessageBubble: {
-    backgroundColor: '#f1f5f9', // Light gray 
+    backgroundColor: theme.colors.surface, // Light gray in light mode, dark surface in dark mode
     borderBottomLeftRadius: 2,
     borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.05)'
+    borderColor: theme.colors.border
   },
   messageText: {
     fontSize: hp(1.9),
@@ -322,9 +324,9 @@ const styles = StyleSheet.create({
     paddingTop: hp(1),
     paddingBottom: hp(2), // Safe area bottom
     paddingHorizontal: wp(4),
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.background,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)'
+    borderTopColor: theme.colors.border
   },
   inputContainer: {
     flexDirection: 'row',

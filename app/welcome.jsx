@@ -3,15 +3,18 @@ import React from 'react'
 import ScreenWrapper from '../components/ScreenWrapper'
 import { StatusBar } from 'expo-status-bar'
 import { hp, wp } from '../helpers/common'
-import { theme } from '../constants/theme'
+import { useTheme } from '../context/ThemeContext'
 import Button from '../components/Button'
 import { useRouter } from 'expo-router'
 
 const Welcome = () => {
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+
   return (
-    <ScreenWrapper bg="white">
-      <StatusBar style="dark" />
+    <ScreenWrapper bg={theme.colors.background}>
+      <StatusBar style={theme.colors.background === '#ffffff' ? "dark" : "light"} />
       <View style={styles.container}>
         <Image style={styles.welcomeImage} resizeMode='contain' source={require('../assets/images/welcome.png')} />
       </View>
@@ -42,12 +45,12 @@ const Welcome = () => {
 
 export default Welcome
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: "space-around",
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.background,
     paddingHorizontal: wp(4)
 
   },

@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import ScreenWrapper from '../../components/ScreenWrapper'
 import Header from '../../components/Header'
 import { hp, wp } from '../../helpers/common'
-import { theme } from '../../constants/theme'
+import { useTheme } from '../../context/ThemeContext'
 import Avatar from '../../components/Avatar'
 import { useAuth } from '../../context/AuthContext'
 import RichTextEditor from '../../components/RichTextEditor'
@@ -20,6 +20,8 @@ import { useAlert } from '../../context/AlertContext';
 const NewPost = () => {
   const post = useLocalSearchParams();
   const { showAlert } = useAlert();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const bodyRef = useRef("");
   const editorRef = useRef(null)
@@ -40,13 +42,14 @@ const NewPost = () => {
     let mediaConfig = {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      quality: 0.7,
+      quality: 0.5,
     }
     if (!isImage) {
       mediaConfig = {
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: true,
-        videoMaxDuration: 60
+        videoMaxDuration: 60,
+        videoExportPreset: ImagePicker.VideoExportPreset.H264_720p,
       }
     }
 
@@ -125,7 +128,7 @@ const NewPost = () => {
 
   }
   return (
-    <ScreenWrapper bg="white">
+    <ScreenWrapper bg={theme.colors.background}>
       <View style={styles.container}>
         <Header title={post && post.id ? "Update Post" : "Create Post"} router={router} />
         <ScrollView contentContainerStyle={{ gap: 20 }}>
@@ -201,7 +204,7 @@ const NewPost = () => {
 
 export default NewPost
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   closeIcon: {
     position: 'absolute',
     top: 10,
@@ -242,7 +245,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: theme.radius.xl,
     borderCurve: 'continuous',
-    borderColor: theme.colors.gray
+    borderColor: theme.colors.border
   },
   textEditor: {
 
