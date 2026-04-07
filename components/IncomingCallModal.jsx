@@ -1,21 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { Image } from 'expo-image';
 import { hp, wp } from '../helpers/common';
 import { theme } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { getUserImageSrc } from '../services/ImageService';
 
 const IncomingCallModal = ({ incomingCall, onAccept, onDecline }) => {
     if (!incomingCall) return null;
 
     return (
-        <Modal transparent animationType="slide">
+        <Modal transparent animationType="slide" visible={true}>
             <View style={styles.container}>
                 <View style={styles.content}>
                     <Text style={styles.title}>Incoming Video Call</Text>
 
                     <Image
-                        source={{ uri: incomingCall.senderImage || 'https://via.placeholder.com/150' }}
+                        source={getUserImageSrc(incomingCall.senderImage)}
                         style={styles.avatar}
+                        contentFit="cover"
+                        transition={200}
                     />
 
                     <Text style={styles.callerName}>{incomingCall.senderName}</Text>
@@ -63,7 +67,7 @@ const styles = StyleSheet.create({
         height: hp(12),
         borderRadius: hp(6),
         marginBottom: 15,
-        backgroundColor: 'gray'
+        backgroundColor: '#555'
     },
     callerName: {
         color: 'white',

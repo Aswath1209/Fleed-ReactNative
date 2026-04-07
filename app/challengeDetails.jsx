@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useLocalSearchParams } from 'expo-router'
 import { useRouter } from 'expo-router';
-import { fetchChallengeById } from '../services/challengesService';
+import { fetchChallengeById, fetchCompletedChallengeIds } from '../services/challengesService';
 import Loading from '../components/Loading';
 import ScreenWrapper from '../components/ScreenWrapper';
 import Header from '../components/Header';
@@ -11,6 +11,7 @@ import { hp, wp } from '../helpers/common';
 import { useTheme } from '../context/ThemeContext';
 import Icon from '../assets/icons';
 import { TouchableOpacity } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 
 const challengeDetails = () => {
   const { id } = useLocalSearchParams();
@@ -18,9 +19,10 @@ const challengeDetails = () => {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   
+  const { user } = useAuth();
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
     getChallengeData();
@@ -31,6 +33,12 @@ const challengeDetails = () => {
     const res = await fetchChallengeById(id);
     if (res.success) {
       setChallenge(res.data);
+    }
+    if (user?.id) {
+      const compRes = await fetchCompletedChallengeIds(user.id);
+      if (compRes.success && compRes.data.includes(id)) {
+        setIsCompleted(true);
+      }
     }
     setLoading(false);
   }
@@ -72,10 +80,10 @@ const challengeDetails = () => {
               </View>
             </View>
             <View style={styles.infoCard}>
-              <Icon name="location" size={hp(2.5)} color={theme.colors.rose} />
+              <Icon name="location" size={hp(2.5)} color={isCompleted ? '#22c55e' : theme.colors.rose} />
               <View>
                 <Text style={styles.infoLabel}>Status</Text>
-                <Text style={styles.infoValue}>Active</Text>
+                <Text style={[styles.infoValue, isCompleted && { color: '#22c55e' }]}>{isCompleted ? 'Completed' : 'Active'}</Text>
               </View>
             </View>
           </View>
@@ -88,12 +96,18 @@ const challengeDetails = () => {
 
         </ScrollView>
         <View style={styles.bottomBar}>
-          <TouchableOpacity 
-            style={styles.submitButton}
-            onPress={() => router.push({ pathname: '/submitChallenge', params: { challengeId: challenge.id, challengeTitle: challenge.title, challengeDescription: challenge.description } })}
-          >
-            <Text style={styles.submitButtonText}>Submit Work</Text>
-          </TouchableOpacity>
+          {isCompleted ? (
+            <View style={styles.completedBar}>
+              <Text style={styles.completedBarText}>✓ Challenge Completed</Text>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={styles.submitButton}
+              onPress={() => router.push({ pathname: '/submitChallenge', params: { challengeId: challenge.id, challengeTitle: challenge.title, challengeDescription: challenge.description } })}
+            >
+              <Text style={styles.submitButtonText}>Submit Work</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
     </ScreenWrapper>
@@ -218,7 +232,17 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize:hp(2),
     fontWeight:theme.fonts.bold,
     color:'white',
-    
-
+  },
+  completedBar:{
+    backgroundColor:'#22c55e',
+    height: hp(6.5),
+    borderRadius:theme.radius.xl,
+    alignItems:'center',
+    justifyContent:'center',
+  },
+  completedBarText:{
+    fontSize:hp(2),
+    fontWeight:theme.fonts.bold,
+    color:'white',
   }
 })

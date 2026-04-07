@@ -1,20 +1,17 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-// Define CORS headers to allow requests from your React Native app
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // 1. Get the data sent from the React Native app
     const { challengeId, userId, code, language, challengeTitle, challengeDescription } = await req.json();
 
     if (!code) {
@@ -24,103 +21,129 @@ serve(async (req) => {
       });
     }
 
-    // 2. Get the Gemini API Key from Supabase Environment Variables
-    // We will set this in the Supabase Dashboard later
+    // Use Groq API (primary) or Gemini API (fallback)
+    const groqApiKey = Deno.env.get('GROQ_API_KEY');
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY is not set in the environment variables.');
+    if (!groqApiKey && !geminiApiKey) {
+      throw new Error('No AI API key configured. Set GROQ_API_KEY or GEMINI_API_KEY.');
     }
 
-    // 3. Construct the prompt for the AI Grader
-    const prompt = `
-      You are an expert coding instructor and an automated grader. 
-      
-      The user is attempting to solve the following challenge:
-      Title: ${challengeTitle}
-      Description: ${challengeDescription}
-      
-      The user submitted the following code in ${language}:
-      \`\`\`${language}
-      ${code}
-      \`\`\`
-      
-      Your task is to evaluate if this code successfully solves the problem described. 
-      You are lenient on minor syntax variations if the core logic handles the problem's constraints.
-      
-      Respond strictly in the following JSON format without any markdown formatting or extra text:
-      {
-        "passed": boolean,
-        "score": number (0 to 100),
-        "feedback": "string (If they failed, explain what they did wrong. If they passed, give a brief congratulatory tip on optimizing it.)"
-      }
-    `;
+    const prompt = `You are an expert coding instructor and automated grader.
 
-    // 4. Call the Gemini API (using the standard REST API endpoint)
-    // We use gemini-2.5-flash as it is fast and cheap/free.
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          // Force JSON output
-          generationConfig: {
-            responseMimeType: "application/json",
+The user is attempting to solve the following challenge:
+Title: ${challengeTitle}
+Description: ${challengeDescription}
+
+The user selected the language: ${language}
+The user submitted the following code:
+\`\`\`${language}
+${code}
+\`\`\`
+
+Your task:
+1. FIRST, verify that the submitted code is actually written in ${language}. If the code is clearly written in a different programming language, immediately fail the submission with feedback telling them to use the correct language.
+2. If the language is correct, evaluate if this code successfully solves the problem described.
+3. Be lenient on minor syntax variations if the core logic handles the problem's constraints.
+
+Respond ONLY with valid JSON (no markdown, no extra text):
+{"passed": boolean, "score": number (0-100), "feedback": "string"}`;
+
+    let aiTextResponse: string | null = null;
+
+    // ---- Try Groq first (30 RPM free, very fast) ----
+    if (groqApiKey) {
+      try {
+        console.log("Calling Groq API...");
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${groqApiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: 'You are a code evaluator. Always respond with valid JSON only, no markdown.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.1,
+            response_format: { type: "json_object" },
+          }),
+        });
+
+        const groqData = await groqResponse.json();
+        console.log("Groq status:", groqResponse.status);
+
+        if (groqResponse.ok && groqData.choices?.[0]?.message?.content) {
+          aiTextResponse = groqData.choices[0].message.content;
+          console.log("Groq response received successfully");
+        } else {
+          console.error("Groq error:", JSON.stringify(groqData));
+        }
+      } catch (groqErr) {
+        console.error("Groq fetch error:", groqErr);
+      }
+    }
+
+    // ---- Fallback to Gemini if Groq failed ----
+    if (!aiTextResponse && geminiApiKey) {
+      try {
+        console.log("Falling back to Gemini API...");
+        const geminiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiApiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: "application/json" }
+            }),
           }
-        }),
+        );
+
+        const geminiData = await geminiResponse.json();
+        console.log("Gemini status:", geminiResponse.status);
+
+        if (geminiResponse.ok && geminiData.candidates?.[0]?.content?.parts?.[0]?.text) {
+          aiTextResponse = geminiData.candidates[0].content.parts[0].text;
+          console.log("Gemini response received successfully");
+        } else {
+          console.error("Gemini error:", JSON.stringify(geminiData));
+        }
+      } catch (geminiErr) {
+        console.error("Gemini fetch error:", geminiErr);
       }
-    );
-
-    const geminiData = await response.json();
-
-    // Log the entire response so we can see it in the dashboard!
-    console.log("Raw Gemini Response:", JSON.stringify(geminiData));
-
-    // 5. Parse the AI's response
-    let aiTextResponse;
-
-    if (response.status === 429) {
-      console.error("Gemini API Rate Limit Exceeded, falling back to mock response.");
-      aiTextResponse = JSON.stringify({
-        passed: true,
-        score: 100,
-        feedback: "API Rate limits exceeded! \n\nWe bypassed the grader and counted your code as correct so you can see your XP go up."
-      });
-    } else if (!response.ok || geminiData.error) {
-      console.error("Gemini API Error:", geminiData.error || geminiData);
-      throw new Error("Failed to communicate with AI Grader. " + (geminiData.error?.message || "Check Supabase logs."));
-    } else {
-      // Safely extract text
-      if (!geminiData.candidates || geminiData.candidates.length === 0) {
-        console.error("No candidates returned from Gemini");
-        throw new Error("AI completely failed to generate a grading response.");
-      }
-      aiTextResponse = geminiData.candidates[0]?.content?.parts[0]?.text;
     }
-    
+
+    // ---- If both APIs failed ----
+    if (!aiTextResponse) {
+      return new Response(
+        JSON.stringify({
+          passed: false,
+          score: 0,
+          feedback: "⏳ AI Grader is temporarily unavailable. Please try again in a moment."
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
+      );
+    }
+
+    // Parse the AI's JSON response
     let evaluationResult;
     try {
       evaluationResult = JSON.parse(aiTextResponse);
     } catch(e) {
-      console.error("Failed to parse Gemini text to JSON:", aiTextResponse);
+      console.error("Failed to parse AI response:", aiTextResponse);
       throw new Error("AI returned invalid formatting instead of JSON.");
     }
 
-    // 6. Record completion and award XP
+    // Record completion and award XP
     if (evaluationResult.passed && challengeId && userId) {
       try {
         const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
         const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-        
         const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-        // a) Check if already completed
         const { data: existing } = await supabaseAdmin
           .from('challenge_completions')
           .select('id')
@@ -129,7 +152,6 @@ serve(async (req) => {
           .single();
 
         if (!existing) {
-          // b) Insert completion
           const { error: insertError } = await supabaseAdmin.from('challenge_completions').insert({
             user_id: userId,
             challenge_id: challengeId,
@@ -137,7 +159,6 @@ serve(async (req) => {
           });
 
           if (!insertError) {
-              // c) Get Challenge XP
               const { data: challengeData } = await supabaseAdmin
                 .from('challenges')
                 .select('reward_xp')
@@ -146,9 +167,7 @@ serve(async (req) => {
                 
               const rewardXp = challengeData?.reward_xp || 0;
 
-              // d) Award XP to User
               if (rewardXp > 0) {
-                // First get user's current XP
                 const { data: userData } = await supabaseAdmin
                   .from('users')
                   .select('xp')
@@ -176,23 +195,16 @@ serve(async (req) => {
       }
     }
 
-    // 6. Send the evaluation back to the React Native app!
     return new Response(
       JSON.stringify(evaluationResult),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200 
-      },
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
     )
 
   } catch (error) {
     console.error("Evaluation Error:", error.message);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500
-      },
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
     )
   }
 })

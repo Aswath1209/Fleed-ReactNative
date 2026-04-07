@@ -54,7 +54,7 @@ const CreateChallenge = () => {
     if (!user?.is_admin) {
          return (
              <ScreenWrapper bg={theme.colors.background}>
-                 <Header title="Create Challenge" router={router} />
+                 <Header title="Create Challenge" onBack={() => router.navigate('/challenges')} />
                  <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                      <Icon name="lock" size={hp(10)} color={theme.colors.textLight} />
                      <Text style={[styles.title, { marginTop: hp(2), textAlign: 'center' }]}>Access Denied</Text>
@@ -66,7 +66,7 @@ const CreateChallenge = () => {
 
     return (
         <ScreenWrapper bg={theme.colors.background}>
-            <Header title="Create Challenge" router={router} />
+            <Header title="Create Challenge" onBack={() => router.navigate('/challenges')} />
             <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
                 
                 <View style={styles.headerInfo}>
@@ -178,7 +178,8 @@ const createStyles = (theme) => StyleSheet.create({
     multilineInput: {
         flex: 1,
         height: '100%',
-        paddingTop: 0, // Reset default padding since container has padding
+        paddingTop: 0,
+        color: theme.colors.text,
     },
     helperText: {
         fontSize: hp(1.5),

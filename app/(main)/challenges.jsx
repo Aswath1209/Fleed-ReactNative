@@ -1,7 +1,7 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import { FlatList, StyleSheet, Text, View, RefreshControl } from 'react-native'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'expo-router';
-import { fetchChallenges } from '../../services/challengesService';
+import { fetchChallenges, fetchCompletedChallengeIds } from '../../services/challengesService';
 import ScreenWrapper from '../../components/ScreenWrapper';
 import Loading from '../../components/Loading';
 import ChallengeCard from '../../components/ChallengeCard';
@@ -14,7 +14,9 @@ import { useAuth } from '../../context/AuthContext';
 const Challenges = () => {
   const { user } = useAuth();
   const[challenges,setChallenges]=useState([]);
+  const[completedIds,setCompletedIds]=useState([]);
   const[loading,setLoading]=useState(true);
+  const[refreshing,setRefreshing]=useState(false);
   const router=useRouter();
   const { theme } = useTheme();
   const styles = createStyles(theme);
@@ -29,9 +31,18 @@ const Challenges = () => {
     if(res.success){
       setChallenges(res.data);
     }
+    if (user?.id) {
+      const compRes = await fetchCompletedChallengeIds(user.id);
+      if (compRes.success) setCompletedIds(compRes.data);
+    }
     setLoading(false);
-    
   }
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await getChallenges();
+    setRefreshing(false);
+  }, []);
   return (
    <ScreenWrapper bg='white'>
     <View style={styles.container}>
@@ -66,8 +77,11 @@ const Challenges = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           keyExtractor={(item)=>item.id.toString()}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />
+          }
           renderItem={({item})=>(
-            <ChallengeCard item={item} router={router}/>
+            <ChallengeCard item={item} router={router} isCompleted={completedIds.includes(item.id)} />
           )}
           ListEmptyComponent={
                             <View style={styles.emptyContainer}>

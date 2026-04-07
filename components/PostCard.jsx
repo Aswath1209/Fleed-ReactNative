@@ -223,12 +223,18 @@ const PostCard = ({
                         <TouchableOpacity onPress={() => setIsImageVisible(true)}>
                             <Image source={fileSource}
                                 transition={100}
-                                style={[styles.postMedia, { width: '100%', minHeight: hp(30), aspectRatio: aspectRatio }]}
+                                style={[styles.postMedia, { width: '100%', minHeight: hp(30), aspectRatio: aspectRatio, backgroundColor: theme.colors.gray + '20' }]}
                                 contentFit='cover'
+                                cachePolicy="memory-disk"
                                 onLoad={(event) => {
-                                    if (event?.source?.width && event?.source?.height) {
-                                        setAspectRatio(event.source.width / event.source.height);
+                                    const w = event?.source?.width;
+                                    const h = event?.source?.height;
+                                    if (w && h && h !== 0) {
+                                        setAspectRatio(w / h);
                                     }
+                                }}
+                                onError={(error) => {
+                                    console.log("Image Load Error:", error);
                                 }}
                             />
                             <ImageViewing
@@ -274,7 +280,7 @@ const PostCard = ({
                     </TouchableOpacity>
                     <Text style={styles.count}>
                         {
-                            item?.comments[0]?.count
+                            item?.comments?.[0]?.count || 0
                         }
                     </Text>
                 </View>

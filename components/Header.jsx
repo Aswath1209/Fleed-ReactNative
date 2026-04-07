@@ -11,6 +11,7 @@ const Header = ({
   showBackButton = true,
   mb = 10,
   router,
+  onBack,
   userImage, // New prop
   rightActions // Prop for adding buttons on the right
 }) => {
@@ -22,7 +23,7 @@ const Header = ({
       {
         showBackButton && (
           <View style={styles.BackButton}>
-            <BackButton router={router} />
+            <BackButton router={router} onBack={onBack} />
           </View>
         )
       }

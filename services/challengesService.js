@@ -124,3 +124,16 @@ export const getLeaderboard = async () => {
         return { success: false, msg: 'Failed to fetch leaderboard' };
     }
 }
+
+export const fetchCompletedChallengeIds = async (userId) => {
+    try {
+        const { data, error } = await supabase
+            .from('challenge_completions')
+            .select('challenge_id')
+            .eq('user_id', userId);
+        if (error) return { success: false, msg: error.message };
+        return { success: true, data: data.map(d => d.challenge_id) };
+    } catch (error) {
+        return { success: false, msg: 'Error fetching completions' };
+    }
+}

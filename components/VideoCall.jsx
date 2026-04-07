@@ -39,11 +39,15 @@ const VideoCall = ({ channelName, onClose, currentUserId, otherUserName, otherUs
 
         init();
 
-        const channel = supabase.channel(`profile:${currentUserId}_call_signal`)
+        // Use a unique channel name suffix so teardown here never removes
+        // the _layout.jsx global incoming-call listener (both would otherwise
+        // share the same `profile:${userId}_call_signal` topic).
+        const declineListenerName = `profile:${currentUserId}_call_signal_videocall_${channelName}`;
+        const channel = supabase.channel(declineListenerName)
             .on('broadcast', { event: 'call_declined' }, (payload) => {
                 if (payload.payload?.roomId === channelName) {
                     Alert.alert("Call Declined", `${otherUserName || 'User'} declined your call.`);
-                    leave(true); // pass true to indicate we shouldn't send cancel signal because they already declined
+                    leave(true);
                 }
             })
             .subscribe();
